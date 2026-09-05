@@ -1,0 +1,194 @@
+// Minimal ABI fragments, transcribed from verified raw Solidity source
+// (contracts-v2 @ main, 2026-09-04) — see research-notes/task-c-ensv2-writepath.md [c8].
+// Only the functions NameGate actually calls. Not a full interface.
+
+export const userRegistryAbi = [
+  {
+    type: "function",
+    name: "register",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "label", type: "string" },
+      { name: "owner", type: "address" },
+      { name: "registry", type: "address" }, // IRegistry — 0x0 if none
+      { name: "resolver", type: "address" },
+      { name: "roleBitmap", type: "uint256" },
+      { name: "expiry", type: "uint64" },
+    ],
+    outputs: [{ name: "tokenId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "setSubregistry",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "anyId", type: "uint256" }, // labelhash, tokenId, or EAC resource
+      { name: "registry", type: "address" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "setResolver",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "anyId", type: "uint256" },
+      { name: "resolver", type: "address" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getExpiry",
+    stateMutability: "view",
+    inputs: [{ name: "anyId", type: "uint256" }],
+    outputs: [{ name: "expiry", type: "uint64" }],
+  },
+  {
+    type: "function",
+    name: "initialize",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "admin", type: "address" },
+      { name: "roleBitmap", type: "uint256" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+export const permissionedResolverAbi = [
+  {
+    type: "function",
+    name: "setText",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "node", type: "bytes32" },
+      { name: "key", type: "string" },
+      { name: "value", type: "string" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "text",
+    stateMutability: "view",
+    inputs: [
+      { name: "node", type: "bytes32" },
+      { name: "key", type: "string" },
+    ],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function",
+    name: "multicall",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "calls", type: "bytes[]" }],
+    outputs: [{ name: "results", type: "bytes[]" }],
+  },
+  {
+    type: "function",
+    name: "initialize",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "admin", type: "address" },
+      { name: "roleBitmap", type: "uint256" },
+      { name: "setters", type: "bytes[]" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "authorizeNameRoles",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "toName", type: "bytes" }, // DNS-encoded
+      { name: "roleBitmap", type: "uint256" },
+      { name: "account", type: "address" },
+      { name: "grant", type: "bool" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "authorizeTextRoles",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "toName", type: "bytes" },
+      { name: "key", type: "string" },
+      { name: "account", type: "address" },
+      { name: "grant", type: "bool" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+export const verifiableFactoryAbi = [
+  {
+    type: "function",
+    name: "deployProxy",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "implementation", type: "address" },
+      { name: "salt", type: "uint256" },
+      { name: "data", type: "bytes" },
+    ],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "event",
+    name: "ProxyDeployed",
+    inputs: [
+      { name: "sender", type: "address", indexed: true },
+      { name: "proxyAddress", type: "address", indexed: true },
+      { name: "salt", type: "uint256", indexed: false },
+      { name: "implementation", type: "address", indexed: false },
+    ],
+  },
+] as const;
+
+export const mockUsdcAbi = [
+  {
+    type: "function",
+    name: "mint",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+// Role bitmap constants — RegistryRolesLib, verified against raw source [c8].
+export const ROLES = {
+  REGISTRAR: 1n << 0n, // root only — authorizes register/reserve
+  REGISTER_RESERVED: 1n << 4n,
+  SET_PARENT: 1n << 8n,
+  UNREGISTER: 1n << 12n,
+  RENEW: 1n << 16n,
+  SET_SUBREGISTRY: 1n << 20n,
+  SET_RESOLVER: 1n << 24n,
+  // CAN_TRANSFER's base bit follows the same 4-bit spacing pattern as its
+  // sibling roles below, but was not directly confirmed in source during
+  // research — only its _ADMIN variant (`(1n<<28n)<<128n`) was. VERIFY this
+  // against ens-cli or the ENSv2 tutorial before relying on it to control
+  // transferability; until then, simply omit it from an investor's
+  // roleBitmap (default = non-transferable) rather than trusting this value.
+  CAN_TRANSFER_UNCONFIRMED: 1n << 28n,
+  UPGRADE: 1n << 124n,
+} as const;
+
+// Every "_ADMIN" variant is the base role shifted left by 128 bits.
+export const admin = (role: bigint) => role << 128n;
+
+export const ALL_ROLES =
+  0x1111111111111111111111111111111111111111111111111111111111111111n;
+
+// The investor's role bitmap: they may point their own subname to a further
+// subregistry (needed so `namegatedemo` investors can later be delegated
+// their own scoped registry, if ever), but nothing else. Critically:
+// - NO SET_RESOLVER — an investor who could set their own resolver could
+//   forge their own compliance status. This is the entire security model.
+// - NO transfer-related role — the allocation is non-transferable.
+export const INVESTOR_ROLE_BITMAP =
+  ROLES.SET_SUBREGISTRY | admin(ROLES.SET_SUBREGISTRY);

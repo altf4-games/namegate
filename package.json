@@ -1,0 +1,22 @@
+{
+  "name": "namegate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ENS names as the compliance layer for a tokenized bond on Hedera",
+  "type": "module",
+  "scripts": {
+    "ens:setup": "node --env-file=.env --import tsx ens/scripts/01-setup-namespace.ts",
+    "ens:register-investor": "node --env-file=.env --import tsx ens/scripts/02-register-investor.ts",
+    "ens:set-compliance": "node --env-file=.env --import tsx ens/scripts/03-set-compliance.ts",
+    "ens:read": "node --env-file=.env --import tsx ens/scripts/04-read-compliance.ts",
+    "hedera:deploy-bond": "node --env-file=.env --import tsx hedera/scripts/01-deploy-bond.ts"
+  },
+  "dependencies": {
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}

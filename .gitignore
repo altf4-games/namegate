@@ -15,3 +15,4 @@ coverage/
 .vscode/
 broadcast/
 deployments/localhost/
+*.tsbuildinfo
