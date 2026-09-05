@@ -12,6 +12,7 @@ import { labelhash } from "viem/ens";
 import { publicClient } from "../src/client.js";
 import { userRegistryAbi, ROLES } from "../src/abi.js";
 import { PARENT_NAME } from "../src/constants.js";
+import { assertUsableLabel } from "../src/label.js";
 
 async function main() {
   const [label, investorAddress] = process.argv.slice(2);

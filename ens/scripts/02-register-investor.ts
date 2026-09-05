@@ -23,12 +23,14 @@
 //   npm run ens:register-investor -- investorb 0xInvestorAddress --accreditation-expiry 2026-09-06
 //   npm run ens:register-investor -- investorc 0xAddr --expires-in-seconds 90
 
+import { isAddress } from "viem";
 import { publicClient, getWalletClient } from "../src/client.js";
 import { userRegistryAbi, INVESTOR_ROLE_BITMAP } from "../src/abi.js";
-import { RESERVED_LABELS } from "../src/constants.js";
+import { PARENT_NAME } from "../src/constants.js";
 import { parseExpiryFlag, resolveExpiry } from "../src/compliance.js";
 import { sepolia } from "viem/chains";
 import { confirmTransaction } from "../../shared/src/tx.js";
+import { assertUsableLabel } from "../src/label.js";
 
 async function main() {
   const [label, investorAddress, flag, flagValue] = process.argv.slice(2);
@@ -39,10 +41,11 @@ async function main() {
     );
     process.exit(1);
   }
-  if (RESERVED_LABELS.has(label.toLowerCase())) {
+  assertUsableLabel(label);
+  if (!isAddress(investorAddress)) {
     throw new Error(
-      `"${label}" is reserved for ENSv1 migration — pick a different label ` +
-        `(e.g. investora, investorb).`,
+      `"${investorAddress}" is not a valid address. The subname would be ` +
+        "registered to nobody, and the beacon would refuse to authorize it.",
     );
   }
 
@@ -62,7 +65,7 @@ async function main() {
   const now = BigInt(Math.floor(Date.now() / 1000));
   const expiry = resolveExpiry(parseExpiryFlag(flag, flagValue), now);
 
-  console.log(`Registering ${label}.namegate.eth -> ${investorAddress}`);
+  console.log(`Registering ${label}.${PARENT_NAME} -> ${investorAddress}`);
   console.log(`  expiry:     ${new Date(Number(expiry) * 1000).toISOString()} (== accreditation expiry)`);
   console.log(`  resolver:   ${issuerResolverAddress} (issuer-controlled, not investor's)`);
   console.log(`  role bitmap: ${INVESTOR_ROLE_BITMAP.toString(2)} (no SET_RESOLVER, no transfer)`);
@@ -85,6 +88,23 @@ async function main() {
   });
   const receipt = await confirmTransaction(publicClient, hash, "Registering the subname");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
+
+  // Read it back. A successful transaction proves nothing was reverted, not
+  // that the name now resolves — omitting setSubregistry on the parent, for
+  // instance, mints names that never resolve, and that failure is silent.
+  const resolver = await publicClient.readContract({
+    address: userRegistryAddress,
+    abi: userRegistryAbi,
+    functionName: "getResolver",
+    args: [label],
+  });
+  if (resolver.toLowerCase() !== issuerResolverAddress.toLowerCase()) {
+    throw new Error(
+      `Registration mined, but ${label} resolves to ${resolver} instead of the ` +
+        `issuer resolver ${issuerResolverAddress}. The name will not work.`,
+    );
+  }
+  console.log(`Verified: ${label} resolves to ${resolver}.`);
 }
 
 main().catch((err) => {

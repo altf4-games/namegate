@@ -13,13 +13,14 @@
 //   npm run ens:authorize-kyc-provider -- investora 0xKycProviderAddress
 //   npm run ens:authorize-kyc-provider -- investora 0xKycProviderAddress --revoke
 
-import { namehash } from "viem";
+import { namehash, isAddress } from "viem";
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
 import { sepolia } from "viem/chains";
 import { permissionedResolverAbi } from "../src/abi.js";
 import { COMPLIANCE_KEYS, PARENT_NAME } from "../src/constants.js";
 import { dnsEncodeName } from "../src/dnsEncode.js";
 import { confirmTransaction } from "../../shared/src/tx.js";
+import { assertUsableLabel } from "../src/label.js";
 
 async function main() {
   const [label, providerAddress, flag] = process.argv.slice(2);
@@ -29,7 +30,21 @@ async function main() {
     );
     process.exit(1);
   }
-  const grant = flag !== "--revoke";
+  // Was `flag !== "--revoke"`, which meant any typo — "--revok", "--remove"
+  // — silently GRANTED write access instead of revoking it. Fail closed on
+  // anything unrecognized rather than guessing at intent.
+  if (flag !== undefined && flag !== "--revoke") {
+    throw new Error(
+      `Unrecognized option "${flag}". The only supported flag is --revoke; ` +
+        "omit it to grant.",
+    );
+  }
+  const grant = flag === undefined;
+
+  assertUsableLabel(label);
+  if (!isAddress(providerAddress)) {
+    throw new Error(`"${providerAddress}" is not a valid address.`);
+  }
 
   const issuerResolverAddress = process.env.ISSUER_RESOLVER_ADDRESS as
     | `0x${string}`

@@ -44,6 +44,32 @@ export const userRegistryAbi = [
     inputs: [{ name: "anyId", type: "uint256" }],
     outputs: [{ name: "expiry", type: "uint64" }],
   },
+  // These two take a plain string LABEL, not an anyId — the registry's
+  // interface mixes both conventions. `getResolver(uint256)` does not exist
+  // and reverts, which is what sent us to IRegistry.sol source in the first
+  // place. Both return the zero address for an EXPIRED name as well as an
+  // unregistered one: the registry masks resolver and owner alike on expiry.
+  {
+    type: "function",
+    name: "getResolver",
+    stateMutability: "view",
+    inputs: [{ name: "label", type: "string" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "findOwner",
+    stateMutability: "view",
+    inputs: [{ name: "label", type: "string" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "getSubregistry",
+    stateMutability: "view",
+    inputs: [{ name: "label", type: "string" }],
+    outputs: [{ name: "", type: "address" }],
+  },
   {
     type: "function",
     name: "initialize",

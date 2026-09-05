@@ -11,7 +11,7 @@
 // Run: npm run hedera:deploy-bond
 
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
-import { factoryAbi } from "../src/abi.js";
+import { factoryAbi, externalControlListManagementAbi } from "../src/abi.js";
 import {
   ATS_TESTNET,
   BOND_CONFIG_ID,
@@ -59,8 +59,13 @@ async function main() {
         symbol: "NGB",
         // Must pass a real ISO 6166 checksum, not just be 12 chars — ATS
         // validates it on-chain (factory/isinValidator.sol, WrongISINChecksum).
-        // This is the same placeholder ATS's own docs use.
-        isin: "US0378331005",
+        // ATS's docs use US0378331005 as their placeholder, but that is
+        // Apple Inc's actual ISIN; labelling a demo bond with a real listed
+        // security's identifier is a bad look on a compliance project. This
+        // is a synthetic ISIN with a valid check digit (computed, not
+        // guessed) whose "XX" prefix is not an assigned ISO 3166 country
+        // code, so it cannot collide with a real instrument.
+        isin: "XXNAMEGATE02",
         decimals: 6,
       },
       rbacs: [
@@ -125,6 +130,36 @@ async function main() {
   });
   const receipt = await confirmTransaction(publicClient, hash, "Bond deployment");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
+
+  // bondAddress came from the SIMULATION, which ran against earlier state.
+  // Printing it as the deployed address without checking would put a
+  // predicted value into .env and every downstream script. Confirm something
+  // is actually deployed there, and that it carries the control list.
+  const code = await publicClient.getCode({ address: bondAddress });
+  if (!code || code === "0x") {
+    throw new Error(
+      `Simulation predicted the bond at ${bondAddress}, but there is no ` +
+        "bytecode there. The address changed between simulation and " +
+        "broadcast — find the real one in the transaction logs before " +
+        "putting anything in .env.",
+    );
+  }
+
+  const listed = await publicClient.readContract({
+    address: bondAddress,
+    abi: externalControlListManagementAbi,
+    functionName: "isExternalControlList",
+    args: [controlListAddress],
+  });
+  if (!listed) {
+    throw new Error(
+      `Bond deployed at ${bondAddress}, but ${controlListAddress} is not ` +
+        "registered as an external control list. The bond has no compliance " +
+        "hook — run hedera:register-control-list before using it.",
+    );
+  }
+
+  console.log(`Verified: bytecode present and control list registered.`);
   console.log(`\nSave to .env: BOND_ADDRESS=${bondAddress}`);
 }
 
