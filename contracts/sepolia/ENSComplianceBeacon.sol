@@ -211,6 +211,13 @@ contract ENSComplianceBeacon {
     ///      reject a message carrying an older source block than one it has
     ///      already applied, which is what stops a stale replay from
     ///      re-authorizing a since-revoked investor.
+    ///
+    ///      Every field read from ENS is carried, including the two the
+    ///      current `authorized` rule does not consider
+    ///      (`accreditationExpiry` and `lockupUntil`). Sending the whole
+    ///      record now means the Hedera side can start enforcing a rule this
+    ///      contract does not yet enforce without a new wire format, and
+    ///      without redeploying the beacon.
     function _buildMessage(ComplianceRecord memory record, address investor)
         internal
         view
@@ -222,6 +229,8 @@ contract ENSComplianceBeacon {
             record.authorized,
             record.kyc,
             record.jurisdiction,
+            record.accreditationExpiry,
+            record.lockupUntil,
             record.nameExpiry,
             block.number,
             block.timestamp

@@ -187,7 +187,7 @@ describe("ENSComplianceBeacon", function () {
       expect(await ctx.router.lastReceiver()).to.equal(ctx.stranger.address);
 
       const decoded = hre.ethers.AbiCoder.defaultAbiCoder().decode(
-        ["bytes32", "address", "bool", "string", "string", "uint64", "uint256", "uint256"],
+        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint256", "uint256"],
         await ctx.router.lastData(),
       );
       expect(decoded[0]).to.equal(node);
@@ -195,9 +195,13 @@ describe("ENSComplianceBeacon", function () {
       expect(decoded[2]).to.equal(true);
       expect(decoded[3]).to.equal("verified");
       expect(decoded[4]).to.equal("US");
-      expect(decoded[5]).to.equal(FUTURE_EXPIRY);
-      expect(decoded[6]).to.be.greaterThan(0n); // source block number
-      expect(decoded[7]).to.be.greaterThan(0n); // source timestamp
+      // Carried as evidence even though `authorized` does not consider them,
+      // so the Hedera side can enforce them later without a new wire format.
+      expect(decoded[5]).to.equal("2027-03-01");
+      expect(decoded[6]).to.equal("");
+      expect(decoded[7]).to.equal(FUTURE_EXPIRY);
+      expect(decoded[8]).to.be.greaterThan(0n); // source block number
+      expect(decoded[9]).to.be.greaterThan(0n); // source timestamp
     });
 
     it("publishes an unauthorized verdict rather than reverting on a blocked investor", async function () {
@@ -207,7 +211,7 @@ describe("ENSComplianceBeacon", function () {
       await ctx.beacon.publish("investorb", ctx.investor.address, { value: FEE });
 
       const decoded = hre.ethers.AbiCoder.defaultAbiCoder().decode(
-        ["bytes32", "address", "bool", "string", "string", "uint64", "uint256", "uint256"],
+        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint256", "uint256"],
         await ctx.router.lastData(),
       );
       // Revoking has to be publishable, or a name could never be un-authorized
