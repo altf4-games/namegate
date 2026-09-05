@@ -4,7 +4,7 @@
 // contracts/test/BeaconTestDoubles.sol for why, and for what they do not
 // prove). They cover the beacon's own decision logic and its money handling.
 // Proof that it reads real ENS and reaches real Hedera comes from deploying
-// it to Sepolia and running ens/scripts/10-publish.ts, not from here.
+// it to Sepolia and running ens/scripts/11-beacon-publish.ts, not from here.
 
 import { expect } from "chai";
 import hre from "hardhat";

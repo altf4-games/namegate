@@ -14,7 +14,7 @@ import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 //     that overpayment is refunded, that any caller may publish.
 //   - They CANNOT prove the beacon reads real ENS or that the CCIP lane
 //     works. Only a live Sepolia deployment does that, which is why
-//     ens/scripts/10-publish.ts exists and is run against real testnets.
+//     ens/scripts/11-beacon-publish.ts exists and is run against real testnets.
 //
 // Keeping the doubles here, clearly marked, is deliberate: the alternative is
 // a test suite that can only run against a live network, which means slow,
