@@ -166,6 +166,51 @@ describe("ENSComplianceBeacon", function () {
       expect(record.nameExpiry).to.equal(0n);
     });
 
+    it("blocks a verified investor who is still inside their lockup", async function () {
+      const ctx = await deployFixture();
+      // A lockup far enough out that it cannot lapse mid-test.
+      await registerVerified(ctx, "investora", { lockupUntil: "2099-01-01" });
+
+      const record = await ctx.beacon.readCompliance("investora");
+      expect(record.kyc).to.equal("verified");
+      expect(record.authorized).to.equal(false);
+      expect(record.lockupUntilTimestamp).to.equal(BigInt(Date.UTC(2099, 0, 1) / 1000));
+    });
+
+    it("authorizes a verified investor whose lockup has already lapsed", async function () {
+      const ctx = await deployFixture();
+      await registerVerified(ctx, "investora", { lockupUntil: "2020-01-01" });
+
+      const record = await ctx.beacon.readCompliance("investora");
+      expect(record.authorized).to.equal(true);
+    });
+
+    it("treats an unset lockup as no lockup", async function () {
+      const ctx = await deployFixture();
+      await registerVerified(ctx, "investora", { lockupUntil: "" });
+
+      const record = await ctx.beacon.readCompliance("investora");
+      expect(record.lockupUntilTimestamp).to.equal(0n);
+      expect(record.authorized).to.equal(true);
+    });
+
+    it("blocks on a malformed lockup rather than ignoring it", async function () {
+      const ctx = await deployFixture();
+      // Fail-closed: a typo in a compliance record must never authorize.
+      for (const lockupUntil of ["not-a-date", "2026/12/31", "2027-02-30", "12-31-2026"]) {
+        await registerVerified(ctx, "investora", { lockupUntil });
+        const record = await ctx.beacon.readCompliance("investora");
+        expect(record.authorized, `expected "${lockupUntil}" to block`).to.equal(false);
+        expect(record.lockupUntilTimestamp).to.equal(2n ** 64n - 1n);
+      }
+    });
+
+    it("requires BOTH verified KYC and a lapsed lockup", async function () {
+      const ctx = await deployFixture();
+      await registerVerified(ctx, "investora", { kyc: "pending", lockupUntil: "2020-01-01" });
+      expect((await ctx.beacon.readCompliance("investora")).authorized).to.equal(false);
+    });
+
     it("rejects an empty label", async function () {
       const ctx = await deployFixture();
       await expect(ctx.beacon.readCompliance("")).to.be.revertedWithCustomError(
@@ -187,7 +232,7 @@ describe("ENSComplianceBeacon", function () {
       expect(await ctx.router.lastReceiver()).to.equal(ctx.stranger.address);
 
       const decoded = hre.ethers.AbiCoder.defaultAbiCoder().decode(
-        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint256", "uint256"],
+        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint64", "uint256", "uint256"],
         await ctx.router.lastData(),
       );
       expect(decoded[0]).to.equal(node);
@@ -199,9 +244,10 @@ describe("ENSComplianceBeacon", function () {
       // so the Hedera side can enforce them later without a new wire format.
       expect(decoded[5]).to.equal("2027-03-01");
       expect(decoded[6]).to.equal("");
-      expect(decoded[7]).to.equal(FUTURE_EXPIRY);
-      expect(decoded[8]).to.be.greaterThan(0n); // source block number
-      expect(decoded[9]).to.be.greaterThan(0n); // source timestamp
+      expect(decoded[7]).to.equal(0n); // no lockup set, so no lockup timestamp
+      expect(decoded[8]).to.equal(FUTURE_EXPIRY);
+      expect(decoded[9]).to.be.greaterThan(0n); // source block number
+      expect(decoded[10]).to.be.greaterThan(0n); // source timestamp
     });
 
     it("publishes an unauthorized verdict rather than reverting on a blocked investor", async function () {
@@ -211,7 +257,7 @@ describe("ENSComplianceBeacon", function () {
       await ctx.beacon.publish("investorb", ctx.investor.address, { value: FEE });
 
       const decoded = hre.ethers.AbiCoder.defaultAbiCoder().decode(
-        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint256", "uint256"],
+        ["bytes32", "address", "bool", "string", "string", "string", "string", "uint64", "uint64", "uint256", "uint256"],
         await ctx.router.lastData(),
       );
       // Revoking has to be publishable, or a name could never be un-authorized

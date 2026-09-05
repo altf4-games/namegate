@@ -52,9 +52,14 @@ export type ComplianceRecord = {
   jurisdiction: string;
   accreditationExpiry: string;
   lockupUntil: string;
+  /** Zero means no lockup. MAX_UINT64 means the value was malformed. */
+  lockupUntilTimestamp: bigint;
   nameExpiry: bigint;
   authorized: boolean;
 };
+
+/** Sentinel the contract returns for an unparseable date — see parseDate. */
+export const LOCKUP_UNPARSEABLE = 2n ** 64n - 1n;
 
 /**
  * Turns a record into the one-line "here's why" the demo needs.
@@ -79,7 +84,21 @@ export function describeRecord(record: ComplianceRecord, nowSeconds: bigint): st
     return `BLOCKED: compliance.kyc is ${shown}, not "verified".`;
   }
 
+  if (record.lockupUntilTimestamp === LOCKUP_UNPARSEABLE) {
+    return (
+      `BLOCKED: compliance.lockup-until is "${record.lockupUntil}", which is not a ` +
+      `valid YYYY-MM-DD date. Unreadable lockups block rather than pass.`
+    );
+  }
+
+  if (record.lockupUntilTimestamp > nowSeconds) {
+    const until = new Date(Number(record.lockupUntilTimestamp) * 1000)
+      .toISOString()
+      .slice(0, 10);
+    return `BLOCKED: KYC is verified, but the holding is locked up until ${until}.`;
+  }
+
   const remaining = record.nameExpiry - nowSeconds;
   const days = Number(remaining / 86_400n);
-  return `ELIGIBLE: KYC verified, accreditation current for another ${days} day(s).`;
+  return `ELIGIBLE: KYC verified, lockup lapsed, accreditation current for another ${days} day(s).`;
 }

@@ -8,7 +8,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { describeRecord, type ComplianceRecord } from "../src/beacon.js";
+import { describeRecord, LOCKUP_UNPARSEABLE, type ComplianceRecord } from "../src/beacon.js";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const RESOLVER = "0x980ea45E726BfDCb3cA242D767E7BA0acd817251" as const;
@@ -24,6 +24,7 @@ function record(overrides: Partial<ComplianceRecord> = {}): ComplianceRecord {
     jurisdiction: "US",
     accreditationExpiry: "2027-03-01",
     lockupUntil: "",
+    lockupUntilTimestamp: 0n,
     nameExpiry: NOW + 365n * 86_400n,
     authorized: true,
     ...overrides,
@@ -71,6 +72,39 @@ describe("describeRecord", () => {
   test("shows an unset KYC status as (unset) rather than empty quotes", () => {
     const message = describeRecord(record({ kyc: "" }), NOW);
     assert.match(message, /\(unset\)/);
+  });
+
+  test("blocks a verified investor still inside their lockup, and names the date", () => {
+    const message = describeRecord(
+      record({ lockupUntil: "2026-12-31", lockupUntilTimestamp: NOW + 86_400n }),
+      NOW,
+    );
+    assert.match(message, /^BLOCKED: KYC is verified, but the holding is locked up until/);
+    assert.ok(message.includes("2026-09-07"));
+  });
+
+  test("treats a lockup exactly at now as lapsed, matching the contract's >=", () => {
+    const message = describeRecord(record({ lockupUntilTimestamp: NOW }), NOW);
+    assert.match(message, /^ELIGIBLE/);
+  });
+
+  test("blocks on an unparseable lockup rather than ignoring it", () => {
+    // Mirrors the contract failing closed: 0 would mean "no lockup" and would
+    // authorize, so a malformed value must never collapse to that.
+    const message = describeRecord(
+      record({ lockupUntil: "not-a-date", lockupUntilTimestamp: LOCKUP_UNPARSEABLE }),
+      NOW,
+    );
+    assert.match(message, /^BLOCKED/);
+    assert.ok(message.includes("not-a-date"));
+  });
+
+  test("reports KYC failure before lockup, so the first real problem is named", () => {
+    const message = describeRecord(
+      record({ kyc: "pending", lockupUntilTimestamp: NOW + 86_400n }),
+      NOW,
+    );
+    assert.match(message, /compliance\.kyc/);
   });
 
   test("checks resolvability before KYC, since an expired name has no readable KYC", () => {

@@ -78,6 +78,12 @@ contract ENSComplianceBeacon {
     ///      tested against the same rule.
     bytes32 private constant KYC_VERIFIED_HASH = keccak256(bytes("verified"));
 
+    /// @dev Sentinel for a `compliance.lockup-until` value that is present but
+    ///      not a valid date. Parsing fails CLOSED: an unreadable lockup is
+    ///      treated as a lockup that never ends, never as no lockup at all.
+    ///      A typo in a compliance record must not silently authorize someone.
+    uint64 internal constant LOCKUP_UNPARSEABLE = type(uint64).max;
+
     struct ComplianceRecord {
         address resolver;
         bytes32 node;
@@ -85,6 +91,9 @@ contract ENSComplianceBeacon {
         string jurisdiction;
         string accreditationExpiry;
         string lockupUntil;
+        /// @notice `lockupUntil` parsed to a Unix timestamp. Zero means no
+        ///         lockup is set; `type(uint64).max` means it was malformed.
+        uint64 lockupUntilTimestamp;
         uint64 nameExpiry;
         bool authorized;
     }
@@ -157,8 +166,91 @@ contract ENSComplianceBeacon {
         record.jurisdiction = resolver.text(record.node, KEY_JURISDICTION);
         record.accreditationExpiry = resolver.text(record.node, KEY_ACCREDITATION_EXPIRY);
         record.lockupUntil = resolver.text(record.node, KEY_LOCKUP_UNTIL);
+        record.lockupUntilTimestamp = parseDate(record.lockupUntil);
 
-        record.authorized = keccak256(bytes(record.kyc)) == KYC_VERIFIED_HASH;
+        // Three independent conditions, all of which must hold. Expiry is not
+        // among them because it is already enforced above: an expired name
+        // has no resolver, so control never reaches this line.
+        record.authorized =
+            keccak256(bytes(record.kyc)) == KYC_VERIFIED_HASH &&
+            block.timestamp >= record.lockupUntilTimestamp;
+    }
+
+    /**
+     * @notice Parses a `YYYY-MM-DD` date to a Unix timestamp at UTC midnight.
+     *         Public so the exact parse can be inspected without guessing.
+     *
+     * @dev Returns 0 for an empty string, meaning "no date set". Returns
+     *      `type(uint64).max` for anything malformed, so a bad value blocks
+     *      rather than authorizes — see LOCKUP_UNPARSEABLE.
+     *
+     *      Rejects calendar-invalid dates such as 2027-02-30, which naive
+     *      parsers silently roll over into March. The TypeScript side hit
+     *      exactly that bug with Date.parse, so it is tested here too.
+     */
+    function parseDate(string memory value) public pure returns (uint64) {
+        bytes memory b = bytes(value);
+        if (b.length == 0) return 0;
+        if (b.length != 10) return LOCKUP_UNPARSEABLE;
+        if (b[4] != "-" || b[7] != "-") return LOCKUP_UNPARSEABLE;
+
+        (uint256 year, bool okYear) = _digits(b, 0, 4);
+        (uint256 month, bool okMonth) = _digits(b, 5, 2);
+        (uint256 day, bool okDay) = _digits(b, 8, 2);
+        if (!okYear || !okMonth || !okDay) return LOCKUP_UNPARSEABLE;
+
+        // The civil-days algorithm below is only valid for years >= 1970,
+        // which is also the earliest timestamp this system could mean.
+        if (year < 1970 || year > 9999) return LOCKUP_UNPARSEABLE;
+        if (month < 1 || month > 12) return LOCKUP_UNPARSEABLE;
+        if (day < 1 || day > _daysInMonth(year, month)) return LOCKUP_UNPARSEABLE;
+
+        return uint64(_daysFromCivil(year, month, day) * 86400);
+    }
+
+    /// @dev Reads `count` ASCII digits starting at `offset`. Returns ok=false
+    ///      on any non-digit, so "20x7-01-01" is rejected rather than
+    ///      partially parsed.
+    function _digits(bytes memory b, uint256 offset, uint256 count)
+        private
+        pure
+        returns (uint256 value, bool ok)
+    {
+        for (uint256 i = 0; i < count; i++) {
+            uint8 c = uint8(b[offset + i]);
+            if (c < 0x30 || c > 0x39) return (0, false);
+            value = value * 10 + (c - 0x30);
+        }
+        return (value, true);
+    }
+
+    function _isLeapYear(uint256 year) private pure returns (bool) {
+        return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    }
+
+    function _daysInMonth(uint256 year, uint256 month) private pure returns (uint256) {
+        if (month == 2) return _isLeapYear(year) ? 29 : 28;
+        if (month == 4 || month == 6 || month == 9 || month == 11) return 30;
+        return 31;
+    }
+
+    /// @dev Days since 1970-01-01. Howard Hinnant's days_from_civil, reduced
+    ///      to unsigned arithmetic because callers are restricted to years
+    ///      >= 1970 above.
+    function _daysFromCivil(uint256 year, uint256 month, uint256 day)
+        private
+        pure
+        returns (uint256)
+    {
+        if (month <= 2) {
+            year -= 1;
+        }
+        uint256 era = year / 400;
+        uint256 yoe = year - era * 400;
+        uint256 mp = month > 2 ? month - 3 : month + 9;
+        uint256 doy = (153 * mp + 2) / 5 + day - 1;
+        uint256 doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        return era * 146097 + doe - 719468;
     }
 
     /// @notice CCIP fee for `publish`, in wei. Quote before sending; the fee
@@ -231,6 +323,7 @@ contract ENSComplianceBeacon {
             record.jurisdiction,
             record.accreditationExpiry,
             record.lockupUntil,
+            record.lockupUntilTimestamp,
             record.nameExpiry,
             block.number,
             block.timestamp

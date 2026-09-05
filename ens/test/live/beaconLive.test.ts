@@ -21,7 +21,12 @@ import { test, describe, before } from "node:test";
 import assert from "node:assert/strict";
 import { namehash } from "viem/ens";
 import { publicClient } from "../../src/client.js";
-import { beaconAbi, requireBeaconAddress, type ComplianceRecord } from "../../src/beacon.js";
+import {
+  beaconAbi,
+  requireBeaconAddress,
+  LOCKUP_UNPARSEABLE,
+  type ComplianceRecord,
+} from "../../src/beacon.js";
 import { PARENT_NAME } from "../../src/constants.js";
 import {
   CCIP_SEPOLIA_ROUTER,
@@ -132,6 +137,33 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
       record.nameExpiry <= block.timestamp,
       "investorc is supposed to be expired by now",
     );
+  });
+
+  test("investora's lockup has lapsed, so lockup is not what authorizes them", async () => {
+    // If this ever reads back as 0, the lockup field was cleared rather than
+    // set to a past date, and the demo would be passing for the wrong reason.
+    const record = await read("investora");
+    const block = await publicClient.getBlock();
+    assert.ok(record.lockupUntilTimestamp > 0n, "expected a real parsed lockup date");
+    assert.ok(record.lockupUntilTimestamp <= block.timestamp, "investora's lockup should have lapsed");
+    assert.notEqual(record.lockupUntilTimestamp, LOCKUP_UNPARSEABLE);
+  });
+
+  test("investore is blocked by lockup despite fully valid KYC", async () => {
+    // The third demo beat, and the one that shows compliance is more than a
+    // single KYC bit: every other field passes and the holder is still
+    // blocked.
+    const record = await read("investore");
+    const block = await publicClient.getBlock();
+
+    assert.notEqual(record.resolver.toLowerCase(), ZERO, "investore should still resolve");
+    assert.equal(record.kyc, "verified");
+    assert.ok(record.nameExpiry > block.timestamp, "investore's accreditation should be current");
+    assert.ok(
+      record.lockupUntilTimestamp > block.timestamp,
+      "investore's lockup should still be in force",
+    );
+    assert.equal(record.authorized, false);
   });
 
   test("a never-registered name reports a zero expiry, distinct from an expired one", async () => {

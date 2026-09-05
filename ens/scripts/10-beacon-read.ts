@@ -13,6 +13,7 @@ import {
   beaconAbi,
   requireBeaconAddress,
   describeRecord,
+  LOCKUP_UNPARSEABLE,
   type ComplianceRecord,
 } from "../src/beacon.js";
 
@@ -42,7 +43,14 @@ async function main() {
   console.log(`  compliance.kyc                  "${record.kyc}"`);
   console.log(`  compliance.jurisdiction         "${record.jurisdiction}"`);
   console.log(`  compliance.accreditation-expiry "${record.accreditationExpiry}"`);
-  console.log(`  compliance.lockup-until         "${record.lockupUntil}"`);
+  console.log(
+    `  compliance.lockup-until         "${record.lockupUntil}"` +
+      (record.lockupUntilTimestamp === LOCKUP_UNPARSEABLE
+        ? "  <- MALFORMED, treated as locked"
+        : record.lockupUntilTimestamp > 0n
+          ? `  -> ${record.lockupUntilTimestamp} (parsed on-chain)`
+          : "  (no lockup)"),
+  );
   console.log(
     `  registry expiry                 ${record.nameExpiry}` +
       (record.nameExpiry > 0n
