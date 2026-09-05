@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+out/
+cache/
+artifacts/
+typechain-types/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+broadcast/
+deployments/localhost/
