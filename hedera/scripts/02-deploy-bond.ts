@@ -39,16 +39,27 @@ async function main() {
 
   const now = Math.floor(Date.now() / 1000);
   const oneYear = 365 * 24 * 60 * 60;
+  // startingDate must be strictly > block.timestamp AT EXECUTION time, not
+  // at simulation time (layer_0/scheduledTasks/ScheduledTasksCommon.sol:
+  // WrongTimestamp). A few seconds always pass between simulate and
+  // broadcast, so "now" goes stale — give it real headroom.
+  const startingDate = now + 600;
 
   const bondData = {
     security: {
       resolver: ATS_TESTNET.blrProxy,
-      maxSupply: 0n, // unlimited
+      // At this factory version, 0 is NOT "unlimited" — it's rejected
+      // outright (layer_0/cap/CapStorageWrapper2.sol: NewMaxSupplyCannotBeZero).
+      // Set a real cap.
+      maxSupply: 1_000_000_000n,
       resolverProxyConfiguration: { key: BOND_CONFIG_ID, version: 1n },
       erc20MetadataInfo: {
         name: "NameGate Demo Bond",
         symbol: "NGB",
-        isin: "US0000000000",
+        // Must pass a real ISO 6166 checksum, not just be 12 chars — ATS
+        // validates it on-chain (factory/isinValidator.sol, WrongISINChecksum).
+        // This is the same placeholder ATS's own docs use.
+        isin: "US0378331005",
         decimals: 6,
       },
       rbacs: [
@@ -76,8 +87,8 @@ async function main() {
       currency: "0x555344" as `0x${string}`, // "USD" as bytes3
       nominalValue: 1_000_000n, // 1.000000, 6 decimals
       nominalValueDecimals: 6,
-      startingDate: BigInt(now),
-      maturityDate: BigInt(now + oneYear),
+      startingDate: BigInt(startingDate),
+      maturityDate: BigInt(startingDate + oneYear),
     },
     proceedRecipients: [] as `0x${string}`[],
     proceedRecipientsData: [] as `0x${string}`[],

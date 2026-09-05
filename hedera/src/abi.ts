@@ -1,6 +1,17 @@
-// Minimal ABI fragments, transcribed from IFactory.sol and
-// IExternalControlListManagement.sol at hashgraph/asset-tokenization-studio
-// @ v.8.0.0-ats (fetched 2026-09-05). Only what NameGate calls.
+// Minimal ABI fragments for the factory deployed on Hedera testnet.
+//
+// CONFIRMED 2026-09-05: a deployBond built from v8.0.0-ats's IFactory.sol
+// reverted with EMPTY return data against the live factory — a selector
+// mismatch (ABI struct encoding is positional; field order differs by
+// version), not a business-logic revert. This SecurityData field order is
+// instead transcribed from v3.1.0-ats (tagged 2026-01-21, one day before
+// this factory's documented 2026-01-22 deploy date — the closest available
+// match; there's no exact "4.0.0" tag to confirm byte-for-byte). See
+// hedera/src/constants.ts for the same caveat on role hashes.
+//
+// BondDetailsData, Rbac, ERC20MetadataInfo, and FactoryRegulationData are
+// IDENTICAL in shape between v3.1.0-ats and v8.0.0-ats — only SecurityData's
+// field order changed.
 
 const rbacType = {
   type: "tuple[]",
@@ -15,8 +26,9 @@ const securityDataType = {
   type: "tuple",
   name: "security",
   components: [
+    { name: "arePartitionsProtected", type: "bool" },
+    { name: "isMultiPartition", type: "bool" },
     { name: "resolver", type: "address" },
-    { name: "maxSupply", type: "uint256" },
     {
       name: "resolverProxyConfiguration",
       type: "tuple",
@@ -25,6 +37,10 @@ const securityDataType = {
         { name: "version", type: "uint256" },
       ],
     },
+    rbacType,
+    { name: "isControllable", type: "bool" },
+    { name: "isWhiteList", type: "bool" },
+    { name: "maxSupply", type: "uint256" },
     {
       name: "erc20MetadataInfo",
       type: "tuple",
@@ -35,19 +51,14 @@ const securityDataType = {
         { name: "decimals", type: "uint8" },
       ],
     },
-    rbacType,
+    { name: "clearingActive", type: "bool" },
+    { name: "internalKycActivated", type: "bool" },
     { name: "externalPauses", type: "address[]" },
     { name: "externalControlLists", type: "address[]" },
     { name: "externalKycLists", type: "address[]" },
+    { name: "erc20VotesActivated", type: "bool" },
     { name: "compliance", type: "address" },
     { name: "identityRegistry", type: "address" },
-    { name: "arePartitionsProtected", type: "bool" },
-    { name: "isMultiPartition", type: "bool" },
-    { name: "isControllable", type: "bool" },
-    { name: "isWhiteList", type: "bool" },
-    { name: "clearingActive", type: "bool" },
-    { name: "internalKycActivated", type: "bool" },
-    { name: "erc20VotesActivated", type: "bool" },
   ],
 } as const;
 
