@@ -1,6 +1,7 @@
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
+import { normalizePrivateKey } from "../../shared/src/normalizePrivateKey.js";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -27,23 +28,10 @@ let cached: {
   issuerAccount: ReturnType<typeof privateKeyToAccount>;
 } | undefined;
 
-function normalizePrivateKey(raw: string): `0x${string}` {
-  // MetaMask's "Export private key" copies the hex without a 0x prefix —
-  // viem/noble require it. Accept either form.
-  const withPrefix = raw.startsWith("0x") ? raw : `0x${raw}`;
-  if (!/^0x[0-9a-fA-F]{64}$/.test(withPrefix)) {
-    throw new Error(
-      "ISSUER_PRIVATE_KEY doesn't look like a 32-byte hex key (64 hex chars, " +
-        "with or without a leading 0x). Check for stray whitespace or quotes.",
-    );
-  }
-  return withPrefix as `0x${string}`;
-}
-
 function getSigner() {
   if (!cached) {
     const issuerAccount = privateKeyToAccount(
-      normalizePrivateKey(requireEnv("ISSUER_PRIVATE_KEY")),
+      normalizePrivateKey(requireEnv("ISSUER_PRIVATE_KEY"), "ISSUER_PRIVATE_KEY"),
     );
     const walletClient = createWalletClient({
       account: issuerAccount,

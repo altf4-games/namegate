@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, http, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { normalizePrivateKey } from "../../shared/src/normalizePrivateKey.js";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -34,23 +35,10 @@ let cached:
     }
   | undefined;
 
-function normalizePrivateKey(raw: string): `0x${string}` {
-  // Accept the key with or without a leading 0x (common export-tool quirk).
-  const withPrefix = raw.startsWith("0x") ? raw : `0x${raw}`;
-  if (!/^0x[0-9a-fA-F]{64}$/.test(withPrefix)) {
-    throw new Error(
-      "HEDERA_OPERATOR_KEY doesn't look like a 32-byte hex key (64 hex " +
-        "chars, with or without a leading 0x). Must be the account's ECDSA " +
-        "hex key, not Hedera Portal's DER-encoded default export.",
-    );
-  }
-  return withPrefix as `0x${string}`;
-}
-
 function getSigner() {
   if (!cached) {
     const issuerAccount = privateKeyToAccount(
-      normalizePrivateKey(requireEnv("HEDERA_OPERATOR_KEY")),
+      normalizePrivateKey(requireEnv("HEDERA_OPERATOR_KEY"), "HEDERA_OPERATOR_KEY"),
     );
     const walletClient = createWalletClient({
       account: issuerAccount,

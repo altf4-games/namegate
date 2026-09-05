@@ -10,5 +10,5 @@
     "resolveJsonModule": true,
     "outDir": "dist"
   },
-  "include": ["ens/**/*.ts", "hedera/**/*.ts"]
+  "include": ["ens/**/*.ts", "hedera/**/*.ts", "shared/**/*.ts"]
 }
