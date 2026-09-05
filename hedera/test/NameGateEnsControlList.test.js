@@ -24,6 +24,16 @@ describe("NameGateEnsControlList", () => {
       expect(await controlList.isAuthorized(investorA.address)).to.equal(false);
       expect(await controlList.isAuthorized(owner.address)).to.equal(false);
     });
+
+    it("rejects the zero address as owner", async () => {
+      // Without this check, the contract would deploy successfully but be
+      // permanently unusable — nothing could ever satisfy onlyOwner.
+      const Factory = await hre.ethers.getContractFactory("NameGateEnsControlList");
+      await expect(Factory.deploy(hre.ethers.ZeroAddress)).to.be.revertedWithCustomError(
+        Factory,
+        "ZeroAddress",
+      );
+    });
   });
 
   describe("isAuthorized — this is what ATS's transfer path actually calls", () => {
@@ -127,6 +137,16 @@ describe("NameGateEnsControlList", () => {
       await expect(
         controlList.connect(investorA).transferOwnership(investorA.address),
       ).to.be.revertedWithCustomError(controlList, "NotOwner");
+    });
+
+    it("rejects transferring to the zero address", async () => {
+      // Otherwise the contract permanently bricks: no address could ever
+      // satisfy onlyOwner again, including to call transferOwnership itself.
+      await expect(
+        controlList.connect(owner).transferOwnership(hre.ethers.ZeroAddress),
+      ).to.be.revertedWithCustomError(controlList, "ZeroAddress");
+      // Ownership must be unchanged after the rejected call.
+      expect(await controlList.owner()).to.equal(owner.address);
     });
   });
 });

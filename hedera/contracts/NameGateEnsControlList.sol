@@ -37,6 +37,7 @@ contract NameGateEnsControlList is IExternalControlList {
     event OwnerChanged(address indexed previousOwner, address indexed newOwner);
 
     error NotOwner();
+    error ZeroAddress();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -44,6 +45,7 @@ contract NameGateEnsControlList is IExternalControlList {
     }
 
     constructor(address _owner) {
+        if (_owner == address(0)) revert ZeroAddress();
         owner = _owner;
         emit OwnerChanged(address(0), _owner);
     }
@@ -69,6 +71,10 @@ contract NameGateEnsControlList is IExternalControlList {
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
+        // Without this check, transferring to address(0) would permanently
+        // brick the contract — no address could ever satisfy onlyOwner
+        // again, including to call transferOwnership itself to recover.
+        if (newOwner == address(0)) revert ZeroAddress();
         emit OwnerChanged(owner, newOwner);
         owner = newOwner;
     }
