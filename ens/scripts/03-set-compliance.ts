@@ -1,4 +1,4 @@
-// Day 2 (docs/BUILD-PLAN.md). Sets compliance text records on an investor's
+// Sets compliance text records on an investor's
 // subname, batched into one tx via multicall. Also demonstrates
 // authorizeTextRoles — the on-brief ENSv2 mechanism ("letting an account
 // edit only certain text records on a name") that scopes KYC writes to a

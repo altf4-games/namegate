@@ -1,4 +1,4 @@
-// Day 1, Gate B (docs/BUILD-PLAN.md): deploys NameGateEnsControlList to
+// Deploys NameGateEnsControlList to
 // Hedera testnet, reading bytecode straight from Hardhat's compiled
 // artifact (run `npm run hedera:compile` first). Uses viem directly rather
 // than Hardhat's own script runner — Hardhat 2's ts-node integration

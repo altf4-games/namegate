@@ -1,5 +1,3 @@
-// Day 2 (docs/BUILD-PLAN.md).
-//
 // Registers one investor subname under the UserRegistry deployed by
 // 01-setup-namespace.ts. Deliberately withholds:
 //   - ROLE_SET_RESOLVER  (investor cannot repoint to a resolver where they
@@ -9,10 +7,10 @@
 //                         ROLE_CAN_TRANSFER_ADMIN is sufficient, confirmed
 //                         against PermissionedRegistry.sol source)
 //
-// --accreditation-expiry sets the REGISTRY'S OWN expiry to that date, per
-// Day 2's design: "Accreditation expiry = subname expiry. Don't store a
-// date string and compare it; let the name expire." If omitted, defaults to
-// 1 year out (investora's original Day 1 registration).
+// --accreditation-expiry sets the REGISTRY'S OWN expiry to that date, rather
+// than storing a date string and comparing it later. Letting the name expire
+// makes accreditation expiry an ENS property instead of an application-level
+// convention. If omitted, defaults to 1 year out.
 //
 // --expires-in-seconds is a TESTING-ONLY escape hatch: --accreditation-expiry
 // only has day granularity, so it can't demo the expiry actually flipping

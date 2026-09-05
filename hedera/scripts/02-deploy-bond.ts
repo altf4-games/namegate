@@ -1,4 +1,4 @@
-// Day 1, Gate B (docs/BUILD-PLAN.md): deploys a minimal bond from the
+// Deploys a minimal bond from the
 // published ATS testnet Factory, with our control list registered at
 // deploy time via SecurityData.externalControlLists. This is the concrete
 // test of the open question from research-notes/task-d-hedera-ats.md — does
@@ -33,7 +33,7 @@ async function main() {
     throw new Error(
       "Set ENS_CONTROL_LIST_ADDRESS in .env (printed by " +
         "01-deploy-control-list.ts). Deploying without it defeats the point " +
-        "of Day 1 Gate B — you'd have a bond with no compliance hook.",
+        "of the integration — you'd have a bond with no compliance hook.",
     );
   }
 
@@ -69,7 +69,7 @@ async function main() {
         { role: ATS_ROLES.ROLE_CONTROL_LIST_MANAGER, members: [issuerAccount.address] },
       ],
       externalPauses: [],
-      // The whole point of Day 1 Gate B: register NameGate's control list
+      // The whole point of the integration: register NameGate's control list
       // at deploy time, not as an afterthought.
       externalControlLists: [controlListAddress],
       externalKycLists: [],

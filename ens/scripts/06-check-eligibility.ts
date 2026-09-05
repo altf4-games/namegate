@@ -1,5 +1,5 @@
-// Day 2 (docs/BUILD-PLAN.md): the ENS-side half of the demo beat, ahead of
-// Day 3's beacon. Reads an investor subname's KYC status and registry
+// The ENS-side half of the demo beat, ahead of the beacon landing.
+// Reads an investor subname's KYC status and registry
 // expiry live, then runs the exact same evaluateEligibility() logic that's
 // unit tested in ens/test/compliance.test.ts — so the demo's "here's why"
 // answer is provably the same function the tests already checked, not a

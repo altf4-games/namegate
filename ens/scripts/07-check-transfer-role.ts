@@ -1,4 +1,4 @@
-// Day 2 (docs/BUILD-PLAN.md): proves an investor's subname is
+// Proves an investor's subname is
 // non-transferable WITHOUT attempting an actual (irreversible-ish) token
 // transfer. PermissionedRegistry.sol's `_update` override reverts a
 // transfer unless the CURRENT OWNER holds ROLE_CAN_TRANSFER_ADMIN on that

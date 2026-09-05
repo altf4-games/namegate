@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dnsEncodeName } from "../src/dnsEncode.js";
 
-test("matches the exact value used in a live Day 1 transaction", () => {
+test("matches the exact value used in a live transaction", () => {
   // Printed by 03-set-compliance.ts and verified fresh (not copy-pasted from
   // old terminal output) before writing this test — 0x09 = length of
   // "investora" (9), then that label, 0x08 = length of "namegate" (8), then

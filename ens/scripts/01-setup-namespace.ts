@@ -1,5 +1,3 @@
-// Day 1, Gate A, steps 2 and 4 of docs/BUILD-PLAN.md.
-//
 // PREREQUISITE: you must have already registered `namegate.eth` on ENSv2
 // Sepolia yourself (via ens-cli or https://explorer.ens.dev/) before running
 // this. This script does NOT register the parent 2LD — only the app-side

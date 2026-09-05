@@ -1,4 +1,4 @@
-// Day 2 (docs/BUILD-PLAN.md): the on-brief ENSv2 mechanic the ENS track
+// The ENSv2 mechanic the ENS track
 // brief names verbatim — "letting an account edit only certain text
 // records on a name." Scopes write access to ONE compliance key to a named
 // KYC-provider address, instead of leaving every compliance.* key writable

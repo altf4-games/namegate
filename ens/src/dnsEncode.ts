@@ -7,7 +7,7 @@ import { packetToBytes } from "viem/ens";
  * 03-set-compliance.ts into its own function so it's independently unit
  * tested against a real fixture — see ens/test/dnsEncode.test.ts, which
  * checks it against the exact byte string this project already produced
- * and used successfully in a live Day 1 transaction.
+ * and used successfully in a live transaction.
  */
 export function dnsEncodeName(name: string): `0x${string}` {
   return toHex(packetToBytes(name));

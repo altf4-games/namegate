@@ -1,4 +1,4 @@
-// Day 1, Gate B (docs/BUILD-PLAN.md): the literal check the build plan
+// The literal check the build plan
 // names — "confirm addExternalControlList is callable" — as a runtime call
 // against an already-deployed bond, independent of whether it was also
 // registered at deploy time via 02-deploy-bond.ts. Useful later for

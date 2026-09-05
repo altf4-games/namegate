@@ -57,7 +57,7 @@ describe("isExpired", () => {
   });
 
   test("treats an expiry exactly equal to now as EXPIRED (<=, not <)", () => {
-    // Matches ENSv2's own ScheduledTasksCommon convention from the Day 1
+    // Matches ENSv2's own ScheduledTasksCommon convention seen in the
     // WrongTimestamp finding: "now" is not strictly future, so it doesn't
     // count as still valid either.
     assert.equal(isExpired(150n, 150n), true);

@@ -11,7 +11,7 @@ import { COMPLIANCE_KEYS } from "./constants.js";
 /**
  * Parses a "YYYY-MM-DD" date into Unix seconds (UTC midnight).
  *
- * Registry expiry is set from this, per Day 2 of docs/BUILD-PLAN.md:
+ * Registry expiry is set from this:
  * "Accreditation expiry = subname expiry. Don't store a date string and
  * compare it; let the name expire." Kept as a separate function (rather than
  * inlined at every call site) specifically so the date parsing itself is
@@ -53,7 +53,7 @@ export function dateToUnixSeconds(dateStr: string): bigint {
  * matching ENSv2's own `ScheduledTasksCommon` convention
  * (`_timestamp <= _blockTimestamp()` reverts as "not yet future" — the same
  * boundary, applied from the other direction) — see
- * research-notes/task-d-hedera-ats.md's WrongTimestamp finding from Day 1.
+ * research-notes/task-d-hedera-ats.md's WrongTimestamp finding.
  */
 export function isExpired(expirySeconds: bigint, nowSeconds: bigint): boolean {
   return expirySeconds <= nowSeconds;

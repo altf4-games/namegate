@@ -17,11 +17,11 @@ interface IExternalControlList {
  *         compliance state mirrored from ENSv2 Sepolia — see
  *         docs/ARCHITECTURE.md, Layer 3.
  *
- * Day 1 scope: a plain owner-writable mapping, so the ENS<->Hedera plumbing
- * (Gate A) and the ATS integration (Gate B) can each be proven independently
- * before they're wired together.
+ * Current scope: a plain owner-writable mapping, so the ENS<->Hedera
+ * plumbing and the ATS integration can each be proven independently before
+ * they're wired together.
  *
- * Day 3-4 scope (not yet implemented here): `setAuthorized` will be replaced
+ * Not yet implemented here: `setAuthorized` will be replaced
  * by `_ccipReceive`, restricted to messages from the Sepolia beacon over a
  * verified CCIP route, carrying a monotonic source block and a
  * `maxStaleness` expiry — see docs/ARCHITECTURE.md, "Layer 2 — the beacon"
@@ -55,9 +55,9 @@ contract NameGateEnsControlList is IExternalControlList {
         return _authorized[account];
     }
 
-    /// @notice Day 1/2 stand-in for the CCIP mirror. Sets one account's
-    ///         compliance status directly, for testing the ATS integration
-    ///         before the cross-chain path is wired up.
+    /// @notice Stand-in for the CCIP mirror. Sets one account's compliance
+    ///         status directly, for testing the ATS integration before the
+    ///         cross-chain path is wired up.
     function setAuthorized(address account, bool authorized) external onlyOwner {
         _authorized[account] = authorized;
         emit AuthorizationSet(account, authorized);

@@ -1,4 +1,4 @@
-// Day 1, Gate A, step 7 of docs/BUILD-PLAN.md: read back what was written,
+// Reads back what was written,
 // with plain viem — no ENSjs needed. This is also the same read path the
 // Sepolia beacon contract will use on-chain (docs/ARCHITECTURE.md), so if
 // this script can't resolve a name, the beacon won't either.
