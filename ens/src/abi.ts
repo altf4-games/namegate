@@ -54,6 +54,24 @@ export const userRegistryAbi = [
     ],
     outputs: [],
   },
+  // IEnhancedAccessControl — confirmed public on UserRegistry via
+  // contracts-v2/src/access-control/interfaces/IEnhancedAccessControl.sol.
+  // Lets us PROVE non-transferability with a read instead of attempting an
+  // actual (irreversible-ish) transfer: pass the token ID as `resource` and
+  // ROLES.admin(CAN_TRANSFER) as `roleBitmap` — false means the address
+  // cannot transfer this token, per PermissionedRegistry.sol's `_update`
+  // override (see abi.ts ROLES comment for the exact revert condition).
+  {
+    type: "function",
+    name: "hasRoles",
+    stateMutability: "view",
+    inputs: [
+      { name: "resource", type: "uint256" },
+      { name: "roleBitmap", type: "uint256" },
+      { name: "account", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
 ] as const;
 
 export const permissionedResolverAbi = [
@@ -159,7 +177,21 @@ export const mockUsdcAbi = [
   },
 ] as const;
 
-// Role bitmap constants — RegistryRolesLib, verified against raw source [c8].
+// Role bitmap constants — RegistryRolesLib, verified against raw source
+// (ensdomains/contracts-v2 @ main, fetched 2026-09-06). Every role below is a
+// (base, admin) pair EXCEPT ROLE_CAN_TRANSFER_ADMIN, which has no base
+// counterpart at all — it's a single toggle bit that lives directly at the
+// admin position (nybble 39). Confirmed by reading PermissionedRegistry.sol's
+// `_update` override directly:
+//
+//   if (!hasRoles(tokenId, RegistryRolesLib.ROLE_CAN_TRANSFER_ADMIN, from)) {
+//       revert TransferDisallowed(tokenId, from);
+//   }
+//
+// So a token transfer reverts unless its CURRENT OWNER holds this exact bit.
+// INVESTOR_ROLE_BITMAP below never grants it, which is what makes an
+// investor's subname non-transferable — not an assumption, a read source
+// confirms it, and 07-check-transfer-role.ts proves it live via hasRoles().
 export const ROLES = {
   REGISTRAR: 1n << 0n, // root only — authorizes register/reserve
   REGISTER_RESERVED: 1n << 4n,
@@ -168,13 +200,7 @@ export const ROLES = {
   RENEW: 1n << 16n,
   SET_SUBREGISTRY: 1n << 20n,
   SET_RESOLVER: 1n << 24n,
-  // CAN_TRANSFER's base bit follows the same 4-bit spacing pattern as its
-  // sibling roles below, but was not directly confirmed in source during
-  // research — only its _ADMIN variant (`(1n<<28n)<<128n`) was. VERIFY this
-  // against ens-cli or the ENSv2 tutorial before relying on it to control
-  // transferability; until then, simply omit it from an investor's
-  // roleBitmap (default = non-transferable) rather than trusting this value.
-  CAN_TRANSFER_UNCONFIRMED: 1n << 28n,
+  CAN_TRANSFER_ADMIN: (1n << 28n) << 128n,
   UPGRADE: 1n << 124n,
 } as const;
 
