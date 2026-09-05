@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:unit && npm run test:contracts",
-    "test:unit": "node --import tsx --test shared/test/normalizePrivateKey.test.ts shared/test/cli.test.ts ens/test/constants.test.ts ens/test/compliance.test.ts ens/test/dnsEncode.test.ts ens/test/abi.test.ts ens/test/registryAnyId.test.ts ens/test/beaconNode.test.ts ens/test/beaconRecord.test.ts hedera/test/constants.test.ts hedera/test/client.test.ts",
+    "test:unit": "node --import tsx --test shared/test/normalizePrivateKey.test.ts shared/test/cli.test.ts ens/test/constants.test.ts ens/test/compliance.test.ts ens/test/dnsEncode.test.ts ens/test/abi.test.ts ens/test/registryAnyId.test.ts ens/test/beaconNode.test.ts ens/test/beaconRecord.test.ts ens/test/writeValidation.test.ts hedera/test/constants.test.ts hedera/test/client.test.ts",
     "test:contracts": "hardhat test",
     "ens:setup": "node --env-file=.env --import tsx ens/scripts/01-setup-namespace.ts",
     "ens:register-investor": "node --env-file=.env --import tsx ens/scripts/02-register-investor.ts",

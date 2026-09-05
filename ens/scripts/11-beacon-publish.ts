@@ -11,8 +11,11 @@
 // was accepted by the router, not that it has landed — track it at
 // https://ccip.chain.link/msg/<messageId>.
 //
+// The address a verdict binds to is NEVER passed in — the beacon reads it
+// from the registry. Publishing someone else's name only republishes the
+// truth about that name; it cannot point that name's verdict at your address.
+//
 // Run: npm run ens:beacon-publish -- investora
-//      npm run ens:beacon-publish -- investora 0xInvestorAddress
 
 import { decodeEventLog } from "viem";
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
@@ -29,17 +32,8 @@ const FEE_BUFFER_BPS = 2000n; // 20%
 
 async function main() {
   const label = process.argv[2];
-  const investorArg = process.argv[3];
   if (!label) {
-    throw new Error(
-      "Usage: npm run ens:beacon-publish -- <label> [investorAddress]\n" +
-        "If investorAddress is omitted, INVESTOR_A_ADDRESS from .env is used.",
-    );
-  }
-
-  const investor = (investorArg ?? process.env.INVESTOR_A_ADDRESS) as `0x${string}` | undefined;
-  if (!investor) {
-    throw new Error("No investor address given and INVESTOR_A_ADDRESS is not set in .env.");
+    throw new Error("Usage: npm run ens:beacon-publish -- <label>   (e.g. investora)");
   }
 
   const beacon = requireBeaconAddress();
@@ -58,7 +52,7 @@ async function main() {
 
   console.log(`Beacon:   ${beacon}`);
   console.log(`Label:    ${label}`);
-  console.log(`Investor: ${investor}`);
+  console.log(`Owner:    ${record.owner}  (read from the registry, not supplied)`);
   console.log(`Caller:   ${account.address}`);
   console.log();
   console.log(`What ENS currently says: ${describeRecord(record, block.timestamp)}`);
@@ -69,7 +63,7 @@ async function main() {
     address: beacon,
     abi: abi as never,
     functionName: "quote",
-    args: [label, investor],
+    args: [label],
   })) as bigint;
 
   const value = fee + (fee * FEE_BUFFER_BPS) / 10_000n;
@@ -88,7 +82,7 @@ async function main() {
     address: beacon,
     abi: abi as never,
     functionName: "publish",
-    args: [label, investor],
+    args: [label],
     account,
     value,
   });
@@ -110,12 +104,14 @@ async function main() {
       if (decoded.eventName === "CompliancePublished") {
         const args = decoded.args as unknown as {
           messageId: string;
+          owner: string;
           authorized: boolean;
           fee: bigint;
         };
         messageId = args.messageId;
         console.log();
         console.log(`CCIP message id: ${args.messageId}`);
+        console.log(`Bound to owner:       ${args.owner}`);
         console.log(`Published authorized: ${args.authorized}`);
         console.log(`Fee actually paid:    ${args.fee} wei`);
       }

@@ -169,3 +169,63 @@ export function parseExpiryFlag(flag: string | undefined, flagValue: string | un
   }
   return { kind: "default" };
 }
+
+/**
+ * The earliest year `ENSComplianceBeacon.parseDate` accepts. The on-chain
+ * civil-days arithmetic is only valid from the Unix epoch onward, so it
+ * rejects anything earlier — while `dateToUnixSeconds` above happily parses
+ * 1969. Writing a date the contract cannot parse is not a harmless
+ * difference: the beacon treats an unparseable lockup as a lockup that never
+ * ends, so the investor is blocked permanently with no error at write time.
+ */
+export const MIN_CONTRACT_YEAR = 1970;
+
+/**
+ * Throws unless `value` is a date the on-chain parser will accept.
+ *
+ * Deliberately stricter than `dateToUnixSeconds`: it additionally enforces
+ * the year floor, so the write path rejects exactly what the contract
+ * rejects. Kept in one place because the failure mode of a mismatch is
+ * silent and only shows up mid-demo.
+ */
+export function assertContractParseableDate(key: string, value: string): void {
+  let seconds: bigint;
+  try {
+    seconds = dateToUnixSeconds(value);
+  } catch (error) {
+    throw new Error(
+      `${key}="${value}" is not a date the beacon can parse: ` +
+        `${(error as Error).message}. The contract would treat it as an ` +
+        `unparseable value and block the investor permanently.`,
+    );
+  }
+
+  const year = Number(value.slice(0, 4));
+  if (year < MIN_CONTRACT_YEAR) {
+    throw new Error(
+      `${key}="${value}" is before ${MIN_CONTRACT_YEAR}, which ENSComplianceBeacon.parseDate ` +
+        "rejects. It would be treated as unparseable and block the investor permanently.",
+    );
+  }
+  void seconds;
+}
+
+/** The compliance keys whose values must be contract-parseable dates. */
+export const DATE_COMPLIANCE_KEYS: readonly string[] = [
+  COMPLIANCE_KEYS.accreditationExpiry,
+  COMPLIANCE_KEYS.lockupUntil,
+];
+
+/**
+ * Validates every date-valued update before any of them is written, so a
+ * batch either goes out entirely valid or not at all.
+ */
+export function assertUpdatesValid(
+  updates: ReadonlyArray<{ key: string; value: string }>,
+): void {
+  for (const { key, value } of updates) {
+    if (DATE_COMPLIANCE_KEYS.includes(key)) {
+      assertContractParseableDate(key, value);
+    }
+  }
+}

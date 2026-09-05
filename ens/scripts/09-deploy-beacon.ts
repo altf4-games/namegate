@@ -42,7 +42,13 @@ async function main() {
 
   const registry = requireEnv("ISSUER_USER_REGISTRY_ADDRESS") as `0x${string}`;
   const receiver = requireEnv("ENS_CONTROL_LIST_ADDRESS") as `0x${string}`;
+  const expectedResolver = requireEnv("ISSUER_RESOLVER_ADDRESS") as `0x${string}`;
   const parentNode = namehash(PARENT_NAME);
+  // Generous relative to a simple mapping write, because the receiver has to
+  // ABI-decode an 11-field payload with four dynamic strings, and Hedera's
+  // gas accounting is not Ethereum's. Measure against the real receiver and
+  // lower it once that exists.
+  const destinationGasLimit = BigInt(process.env.DESTINATION_GAS_LIMIT ?? "400000");
 
   const account = getIssuerAccount();
   const walletClient = getWalletClient();
@@ -50,9 +56,11 @@ async function main() {
   console.log(`Deploying ENSComplianceBeacon as ${account.address}`);
   console.log(`  registry:  ${registry}`);
   console.log(`  parent:    ${PARENT_NAME} (${parentNode})`);
+  console.log(`  resolver:  ${expectedResolver} (pinned — records from any other are ignored)`);
   console.log(`  router:    ${CCIP_SEPOLIA_ROUTER}`);
   console.log(`  selector:  ${CCIP_HEDERA_TESTNET_SELECTOR}`);
   console.log(`  receiver:  ${receiver}`);
+  console.log(`  gas limit: ${destinationGasLimit}`);
   console.log();
 
   const hash = await walletClient.deployContract({
@@ -63,9 +71,11 @@ async function main() {
     args: [
       registry,
       parentNode,
+      expectedResolver,
       CCIP_SEPOLIA_ROUTER,
       CCIP_HEDERA_TESTNET_SELECTOR,
       receiver,
+      destinationGasLimit,
     ],
   });
 

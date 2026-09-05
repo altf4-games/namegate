@@ -34,11 +34,17 @@ async function main() {
   })) as ComplianceRecord;
 
   const block = await publicClient.getBlock();
+  const expectedResolver = (await publicClient.readContract({
+    address: beacon,
+    abi: abi as never,
+    functionName: "expectedResolver",
+  })) as `0x${string}`;
 
   console.log(`Beacon:   ${beacon}`);
   console.log(`Label:    ${label}`);
   console.log(`Node:     ${record.node}`);
   console.log(`Resolver: ${record.resolver}`);
+  console.log(`Owner:    ${record.owner}  (from the registry — verdicts bind to this)`);
   console.log();
   console.log(`  compliance.kyc                  "${record.kyc}"`);
   console.log(`  compliance.jurisdiction         "${record.jurisdiction}"`);
@@ -59,7 +65,7 @@ async function main() {
   );
   console.log();
   console.log(`authorized (on-chain): ${record.authorized}`);
-  console.log(describeRecord(record, block.timestamp));
+  console.log(describeRecord(record, block.timestamp, expectedResolver));
 }
 
 main().catch((error) => {

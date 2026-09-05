@@ -36,25 +36,41 @@ contract FakeTextResolver {
 
 contract FakeEnsRegistry {
     mapping(string => address) private _resolvers;
+    mapping(string => address) private _owners;
     mapping(uint256 => uint64) private _expiries;
 
     /// @dev Mirrors PermissionedRegistry: an expired name resolves to
-    ///      address(0) rather than reverting.
-    function setEntry(string calldata label, address resolver, uint64 expiry) external {
+    ///      address(0) rather than reverting, and its owner is masked the
+    ///      same way. Both behaviours were confirmed against the deployed
+    ///      registry (findOwner("investorc") returns zero post-expiry), and
+    ///      the owner masking is why revocation has to key by node.
+    function setEntry(
+        string calldata label,
+        address resolver,
+        address owner,
+        uint64 expiry
+    ) external {
         _resolvers[label] = resolver;
+        _owners[label] = owner;
         _expiries[uint256(keccak256(bytes(label)))] = expiry;
     }
 
     function getResolver(string calldata label) external view returns (address) {
-        uint64 expiry = _expiries[uint256(keccak256(bytes(label)))];
-        if (block.timestamp >= expiry) {
-            return address(0);
-        }
+        if (_isExpired(label)) return address(0);
         return _resolvers[label];
+    }
+
+    function findOwner(string calldata label) external view returns (address) {
+        if (_isExpired(label)) return address(0);
+        return _owners[label];
     }
 
     function getExpiry(uint256 anyId) external view returns (uint64) {
         return _expiries[anyId];
+    }
+
+    function _isExpired(string calldata label) private view returns (bool) {
+        return block.timestamp >= _expiries[uint256(keccak256(bytes(label)))];
     }
 }
 
@@ -102,13 +118,13 @@ contract FakeCcipRouter is IRouterClient {
 /// @dev Rejects incoming ETH, to test that a failed refund reverts the whole
 ///      publish rather than silently swallowing the caller's money.
 contract RefundRejecter {
-    function publish(address beacon, string calldata label, address investor)
+    function publish(address beacon, string calldata label)
         external
         payable
         returns (bytes32)
     {
         (bool ok, bytes memory ret) = beacon.call{value: msg.value}(
-            abi.encodeWithSignature("publish(string,address)", label, investor)
+            abi.encodeWithSignature("publish(string)", label)
         );
         if (!ok) {
             assembly {

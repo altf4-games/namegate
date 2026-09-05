@@ -15,6 +15,12 @@ interface IEnsRegistry {
     function getResolver(string calldata label) external view returns (address);
 
     function getExpiry(uint256 anyId) external view returns (uint64);
+
+    /// @dev Returns `address(0)` for a name that is expired OR was never
+    ///      registered — the registry masks ownership on expiry exactly as it
+    ///      masks the resolver. Verified against the deployed registry:
+    ///      findOwner("investorc") returns zero once that name expired.
+    function findOwner(string calldata label) external view returns (address);
 }
 
 /// @dev ENSIP-5 text resolution. `PermissionedResolver.text` is a plain
@@ -45,6 +51,18 @@ interface ITextResolver {
  * `address(0)` from `getResolver` once a name has expired, so an expired
  * accreditation makes the record structurally unreadable and the beacon
  * reports the investor as unauthorized. Accreditation expiry IS name expiry.
+ *
+ * The address a verdict applies to is NEVER supplied by the caller. It is
+ * read from the registry with `findOwner`, so calling `publish` for a name
+ * you do not own cannot authorize you. An earlier version took the address as
+ * an argument, which let anyone publish a compliant name's `true` verdict
+ * bound to their own address — a complete bypass of the compliance layer.
+ *
+ * NOTE FOR THE RECEIVER: an expired name has no owner, so a revocation
+ * message carries `owner == address(0)`. The Hedera side must therefore key
+ * its state by `node` and revoke whichever address that node was last bound
+ * to. Keying by the payload's address would make revocation impossible for
+ * exactly the names that most need revoking.
  */
 contract ENSComplianceBeacon {
     /// @notice The registry holding investor subnames (the issuer's
@@ -64,8 +82,24 @@ contract ENSComplianceBeacon {
     /// @notice The `NameGateEnsControlList` on Hedera.
     address public immutable receiver;
 
+    /// @notice The only resolver whose records this beacon will believe.
+    ///
+    /// @dev Defence in depth. The security model already withholds
+    ///      ROLE_SET_RESOLVER so an investor cannot repoint their name at a
+    ///      resolver they control, but that is a property of how registrations
+    ///      happen to be configured. Pinning it here makes the beacon enforce
+    ///      it at the point it is relied upon: a name pointing anywhere else
+    ///      reads as unauthorized rather than as trusted third-party data.
+    address public immutable expectedResolver;
+
     /// @notice Gas allowance for the callback on Hedera.
-    uint256 public constant DESTINATION_GAS_LIMIT = 200_000;
+    ///
+    /// @dev Immutable rather than constant because the right value depends on
+    ///      what the receiver does with an 11-field payload containing four
+    ///      dynamic strings, and Hedera's gas accounting is not Ethereum's.
+    ///      A wrong constant would mean redeploying the beacon and updating
+    ///      every reference to its address.
+    uint256 public immutable destinationGasLimit;
 
     string public constant KEY_KYC = "compliance.kyc";
     string public constant KEY_JURISDICTION = "compliance.jurisdiction";
@@ -86,6 +120,10 @@ contract ENSComplianceBeacon {
 
     struct ComplianceRecord {
         address resolver;
+        /// @notice The name's holder, read from the registry. Zero when the
+        ///         name is expired or unregistered. This, never a caller
+        ///         argument, is the address a verdict binds to.
+        address owner;
         bytes32 node;
         string kyc;
         string jurisdiction;
@@ -101,34 +139,41 @@ contract ENSComplianceBeacon {
     event CompliancePublished(
         bytes32 indexed messageId,
         string label,
-        address indexed investor,
+        address indexed owner,
         bool authorized,
         uint256 fee
     );
 
     error EmptyLabel();
     error ZeroAddress();
+    error ZeroGasLimit();
     error InsufficientFee(uint256 required, uint256 provided);
 
     constructor(
         IEnsRegistry _registry,
         bytes32 _parentNode,
+        address _expectedResolver,
         IRouterClient _router,
         uint64 _destinationChainSelector,
-        address _receiver
+        address _receiver,
+        uint256 _destinationGasLimit
     ) {
         if (
             address(_registry) == address(0) ||
             address(_router) == address(0) ||
-            _receiver == address(0)
+            _receiver == address(0) ||
+            _expectedResolver == address(0)
         ) {
             revert ZeroAddress();
         }
+        if (_destinationGasLimit == 0) revert ZeroGasLimit();
         registry = _registry;
         parentNode = _parentNode;
+        expectedResolver = _expectedResolver;
         router = _router;
         destinationChainSelector = _destinationChainSelector;
         receiver = _receiver;
+        destinationGasLimit = _destinationGasLimit;
     }
 
     /// @notice `namehash(label + "." + parent)`, per ENSIP-1.
@@ -155,9 +200,15 @@ contract ENSComplianceBeacon {
 
         record.node = nodeFor(label);
         record.resolver = registry.getResolver(label);
+        record.owner = registry.findOwner(label);
         record.nameExpiry = registry.getExpiry(uint256(keccak256(bytes(label))));
 
-        if (record.resolver == address(0)) {
+        // Covers three cases at once, all correctly unauthorized: the name is
+        // expired (registry masks the resolver to zero), the name was never
+        // registered (also zero), or it points at a resolver this beacon does
+        // not trust. The caller can tell them apart from `resolver` and
+        // `nameExpiry`, which are reported either way.
+        if (record.resolver != expectedResolver) {
             return record;
         }
 
@@ -168,10 +219,12 @@ contract ENSComplianceBeacon {
         record.lockupUntil = resolver.text(record.node, KEY_LOCKUP_UNTIL);
         record.lockupUntilTimestamp = parseDate(record.lockupUntil);
 
-        // Three independent conditions, all of which must hold. Expiry is not
-        // among them because it is already enforced above: an expired name
-        // has no resolver, so control never reaches this line.
+        // Expiry and resolver trust are already enforced above: control only
+        // reaches here for an unexpired name on the pinned resolver. The
+        // owner check is belt-and-braces — a verdict with nobody to bind it
+        // to must never be `true`.
         record.authorized =
+            record.owner != address(0) &&
             keccak256(bytes(record.kyc)) == KYC_VERIFIED_HASH &&
             block.timestamp >= record.lockupUntilTimestamp;
     }
@@ -255,13 +308,9 @@ contract ENSComplianceBeacon {
 
     /// @notice CCIP fee for `publish`, in wei. Quote before sending; the fee
     ///         moves with gas conditions on both chains.
-    function quote(string calldata label, address investor)
-        public
-        view
-        returns (uint256 fee)
-    {
+    function quote(string calldata label) public view returns (uint256 fee) {
         ComplianceRecord memory record = readCompliance(label);
-        return router.getFee(destinationChainSelector, _buildMessage(record, investor));
+        return router.getFee(destinationChainSelector, _buildMessage(record));
     }
 
     /**
@@ -269,18 +318,20 @@ contract ENSComplianceBeacon {
      *         Hedera. PERMISSIONLESS: any caller, any name. The caller pays
      *         the CCIP fee and any excess is refunded.
      *
-     * @param label    Investor label under the parent name, e.g. "investora".
-     * @param investor The address the control list will gate on Hedera.
+     * @dev Takes no address. The verdict binds to whoever the registry says
+     *     holds the name, so paying the fee for someone else's name only ever
+     *     republishes the truth about that name. There is deliberately no way
+     *     to say "apply this name's verdict to that address".
+     *
+     * @param label Investor label under the parent name, e.g. "investora".
      */
-    function publish(string calldata label, address investor)
+    function publish(string calldata label)
         external
         payable
         returns (bytes32 messageId)
     {
-        if (investor == address(0)) revert ZeroAddress();
-
         ComplianceRecord memory record = readCompliance(label);
-        Client.EVM2AnyMessage memory message = _buildMessage(record, investor);
+        Client.EVM2AnyMessage memory message = _buildMessage(record);
 
         uint256 fee = router.getFee(destinationChainSelector, message);
         if (msg.value < fee) revert InsufficientFee(fee, msg.value);
@@ -295,7 +346,7 @@ contract ENSComplianceBeacon {
             require(ok, "refund failed");
         }
 
-        emit CompliancePublished(messageId, label, investor, record.authorized, fee);
+        emit CompliancePublished(messageId, label, record.owner, record.authorized, fee);
     }
 
     /// @dev The wire format the Hedera control list decodes. `block.number`
@@ -310,14 +361,14 @@ contract ENSComplianceBeacon {
     ///      record now means the Hedera side can start enforcing a rule this
     ///      contract does not yet enforce without a new wire format, and
     ///      without redeploying the beacon.
-    function _buildMessage(ComplianceRecord memory record, address investor)
+    function _buildMessage(ComplianceRecord memory record)
         internal
         view
         returns (Client.EVM2AnyMessage memory)
     {
         bytes memory payload = abi.encode(
             record.node,
-            investor,
+            record.owner,
             record.authorized,
             record.kyc,
             record.jurisdiction,
@@ -335,8 +386,20 @@ contract ENSComplianceBeacon {
                 data: payload,
                 tokenAmounts: new Client.EVMTokenAmount[](0),
                 feeToken: address(0), // pay in native ETH
+                // GenericExtraArgsV2, not the deprecated V1 form. Client.sol
+                // warns that allowOutOfOrderExecution's "default varies by
+                // chain. On some chains, a particular value is enforced,
+                // meaning if the expected value is not set, the message
+                // request will revert." Out-of-order execution is safe here
+                // precisely because the payload carries block.number and
+                // block.timestamp, so the receiver can drop a message older
+                // than the last one it applied instead of relying on CCIP to
+                // order them.
                 extraArgs: Client._argsToBytes(
-                    Client.EVMExtraArgsV1({gasLimit: DESTINATION_GAS_LIMIT})
+                    Client.GenericExtraArgsV2({
+                        gasLimit: destinationGasLimit,
+                        allowOutOfOrderExecution: true
+                    })
                 )
             });
     }

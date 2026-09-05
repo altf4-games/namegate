@@ -25,13 +25,16 @@ let beacon;
 before(async function () {
   const [, , stranger] = await hre.ethers.getSigners();
   const registry = await hre.ethers.deployContract("FakeEnsRegistry");
+  const resolver = await hre.ethers.deployContract("FakeTextResolver");
   const router = await hre.ethers.deployContract("FakeCcipRouter", [0]);
   beacon = await hre.ethers.deployContract("ENSComplianceBeacon", [
     await registry.getAddress(),
     hre.ethers.namehash("namegate.eth"),
+    await resolver.getAddress(),
     await router.getAddress(),
     222782988166878823n,
     stranger.address,
+    300_000n,
   ]);
 });
 

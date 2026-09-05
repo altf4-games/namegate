@@ -137,6 +137,9 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
       record.nameExpiry <= block.timestamp,
       "investorc is supposed to be expired by now",
     );
+    // The owner is masked on expiry too, which is why the Hedera receiver has
+    // to revoke by node rather than by the address in the payload.
+    assert.equal(record.owner.toLowerCase(), ZERO);
   });
 
   test("investora's lockup has lapsed, so lockup is not what authorizes them", async () => {
@@ -149,26 +152,77 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
     assert.notEqual(record.lockupUntilTimestamp, LOCKUP_UNPARSEABLE);
   });
 
-  test("investore is blocked by lockup despite fully valid KYC", async () => {
+  test("investorf is blocked by lockup despite fully valid KYC", async () => {
     // The third demo beat, and the one that shows compliance is more than a
     // single KYC bit: every other field passes and the holder is still
     // blocked.
-    const record = await read("investore");
+    const record = await read("investorf");
     const block = await publicClient.getBlock();
 
-    assert.notEqual(record.resolver.toLowerCase(), ZERO, "investore should still resolve");
+    assert.notEqual(record.resolver.toLowerCase(), ZERO, "investorf should still resolve");
     assert.equal(record.kyc, "verified");
-    assert.ok(record.nameExpiry > block.timestamp, "investore's accreditation should be current");
+    assert.ok(record.nameExpiry > block.timestamp, "investorf's accreditation should be current");
     assert.ok(
       record.lockupUntilTimestamp > block.timestamp,
-      "investore's lockup should still be in force",
+      "investorf's lockup should still be in force",
     );
     assert.equal(record.authorized, false);
+  });
+
+  test("the lockup demo holder is not the issuer key", async () => {
+    // An issuer that is also an investor undercuts the issuer/investor split
+    // the whole ENS design argument rests on, and would mean binding verdicts
+    // to owners authorizes the issuer's own address.
+    const record = await read("investorf");
+    const issuerHeld = (process.env.INVESTOR_A_ADDRESS ?? "").toLowerCase();
+    assert.notEqual(record.owner.toLowerCase(), ZERO);
+    assert.notEqual(record.owner.toLowerCase(), issuerHeld);
+  });
+
+  test("verdicts bind to the registry's owner", async () => {
+    // publish() takes no address at all, so there is no way to point a
+    // compliant name's verdict at an arbitrary account. This checks the
+    // owner the beacon reads is the holder we actually registered.
+    const record = await read("investora");
+    assert.equal(
+      record.owner.toLowerCase(),
+      (process.env.INVESTOR_A_ADDRESS ?? "").toLowerCase(),
+    );
+  });
+
+  test("the beacon is pinned to the issuer's resolver", async () => {
+    const pinned = (await publicClient.readContract({
+      address: beacon,
+      abi: abi as never,
+      functionName: "expectedResolver",
+    })) as string;
+    assert.equal(
+      pinned.toLowerCase(),
+      (process.env.ISSUER_RESOLVER_ADDRESS ?? "").toLowerCase(),
+    );
+  });
+
+  test("the accreditation-expiry record agrees with the registry expiry that enforces it", async () => {
+    // Two sources of truth for the same fact. If they drift, the record a
+    // judge reads on screen is not the one the contract obeys. The write
+    // path refuses to create a mismatch; this catches one made another way.
+    for (const label of ["investora", "investorf"]) {
+      const record = await read(label);
+      const enforcedDay = new Date(Number(record.nameExpiry) * 1000)
+        .toISOString()
+        .slice(0, 10);
+      assert.equal(
+        record.accreditationExpiry,
+        enforcedDay,
+        `${label}: record says ${record.accreditationExpiry}, registry enforces ${enforcedDay}`,
+      );
+    }
   });
 
   test("a never-registered name reports a zero expiry, distinct from an expired one", async () => {
     const record = await read(NEVER_REGISTERED);
     assert.equal(record.resolver.toLowerCase(), ZERO);
+    assert.equal(record.owner.toLowerCase(), ZERO);
     assert.equal(record.authorized, false);
     assert.equal(record.nameExpiry, 0n);
   });
@@ -178,12 +232,11 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
   });
 
   test("quotes a non-zero CCIP fee for a real publish", async () => {
-    const investor = process.env.INVESTOR_A_ADDRESS as `0x${string}`;
     const fee = (await publicClient.readContract({
       address: beacon,
       abi: abi as never,
       functionName: "quote",
-      args: ["investora", investor],
+      args: ["investora"],
     })) as bigint;
     assert.ok(fee > 0n, "a real router should quote a non-zero fee");
   });

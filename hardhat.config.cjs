@@ -5,6 +5,14 @@ require("@nomicfoundation/hardhat-toolbox");
 // mirror: https://296.rpc.thirdweb.com (see docs/BUILD-PLAN.md, Day 1 Gate B).
 const HEDERA_RPC_URL = process.env.HEDERA_RPC_URL ?? "https://testnet.hashio.io/api";
 
+// Networks are only reachable when their RPC URL is set, but `hardhat compile`
+// and `hardhat test` must keep working without any .env at all — so this
+// returns a placeholder that fails loudly only if something actually tries to
+// connect with it.
+function requireUrl(name) {
+  return process.env[name] ?? `http://unset-${name.toLowerCase()}.invalid`;
+}
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
@@ -19,9 +27,25 @@ module.exports = {
     cache: "./cache",
     artifacts: "./artifacts",
   },
+  // Source verification. Deployment happens through the viem scripts, but
+  // `hardhat verify` is how the Sepolia beacon's source gets published, and
+  // the Hedera contracts go on HashScan. Wiring this up now rather than on
+  // submission day, when a first-time verification failure would have no
+  // room left to debug.
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY ?? "",
+    },
+  },
+  sourcify: {
+    // HashScan reads Sourcify, so this is the Hedera verification path.
+    enabled: true,
+  },
   networks: {
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL ?? "",
+      // No fallback: an empty URL produces a confusing connection error at
+      // call time instead of naming the missing variable.
+      url: requireUrl("SEPOLIA_RPC_URL"),
       chainId: 11155111,
     },
     hederaTestnet: {
