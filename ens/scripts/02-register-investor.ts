@@ -1,23 +1,42 @@
-// Day 2 (docs/BUILD-PLAN.md), but scripted now while the setup logic is fresh.
+// Day 2 (docs/BUILD-PLAN.md).
 //
 // Registers one investor subname under the UserRegistry deployed by
 // 01-setup-namespace.ts. Deliberately withholds:
 //   - ROLE_SET_RESOLVER  (investor cannot repoint to a resolver where they
 //                         could forge their own compliance status)
-//   - any transfer role  (the allocation is non-transferable)
+//   - any transfer role  (the allocation is non-transferable — see
+//                         ens/src/abi.ts's ROLES comment for why omitting
+//                         ROLE_CAN_TRANSFER_ADMIN is sufficient, confirmed
+//                         against PermissionedRegistry.sol source)
 //
-// Run: npm run ens:register-investor -- investora 0xInvestorAddress
+// --accreditation-expiry sets the REGISTRY'S OWN expiry to that date, per
+// Day 2's design: "Accreditation expiry = subname expiry. Don't store a
+// date string and compare it; let the name expire." If omitted, defaults to
+// 1 year out (investora's original Day 1 registration).
+//
+// --expires-in-seconds is a TESTING-ONLY escape hatch: --accreditation-expiry
+// only has day granularity, so it can't demo the expiry actually flipping
+// within a single session. This sets a real registry expiry N seconds out —
+// wait that long, then run ens:check-eligibility and watch it flip from
+// ELIGIBLE to BLOCKED. Don't use this for a real investor registration.
+//
+// Run:
+//   npm run ens:register-investor -- investorb 0xInvestorAddress
+//   npm run ens:register-investor -- investorb 0xInvestorAddress --accreditation-expiry 2026-09-06
+//   npm run ens:register-investor -- investorc 0xAddr --expires-in-seconds 90
 
 import { publicClient, getWalletClient } from "../src/client.js";
 import { userRegistryAbi, INVESTOR_ROLE_BITMAP } from "../src/abi.js";
 import { RESERVED_LABELS } from "../src/constants.js";
+import { parseExpiryFlag, resolveExpiry } from "../src/compliance.js";
 import { sepolia } from "viem/chains";
 
 async function main() {
-  const [label, investorAddress] = process.argv.slice(2);
+  const [label, investorAddress, flag, flagValue] = process.argv.slice(2);
   if (!label || !investorAddress) {
     console.error(
-      "Usage: npm run ens:register-investor -- <label> <investorAddress>",
+      "Usage: npm run ens:register-investor -- <label> <investorAddress> " +
+        "[--accreditation-expiry YYYY-MM-DD]",
     );
     process.exit(1);
   }
@@ -41,10 +60,11 @@ async function main() {
     );
   }
 
-  const oneYear = 365n * 24n * 60n * 60n;
-  const expiry = BigInt(Math.floor(Date.now() / 1000)) + oneYear;
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const expiry = resolveExpiry(parseExpiryFlag(flag, flagValue), now);
 
   console.log(`Registering ${label}.namegate.eth -> ${investorAddress}`);
+  console.log(`  expiry:     ${new Date(Number(expiry) * 1000).toISOString()} (== accreditation expiry)`);
   console.log(`  resolver:   ${issuerResolverAddress} (issuer-controlled, not investor's)`);
   console.log(`  role bitmap: ${INVESTOR_ROLE_BITMAP.toString(2)} (no SET_RESOLVER, no transfer)`);
 

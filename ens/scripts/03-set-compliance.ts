@@ -9,23 +9,14 @@
 //   npm run ens:set-compliance -- investora \
 //     --kyc verified --jurisdiction US --accreditation-expiry 2027-03-01 --lockup-until 2026-12-31
 
-import { encodeFunctionData, namehash, toHex } from "viem";
-import { packetToBytes } from "viem/ens";
+import { encodeFunctionData, namehash } from "viem";
 import { publicClient, getWalletClient } from "../src/client.js";
 import { permissionedResolverAbi } from "../src/abi.js";
-import { COMPLIANCE_KEYS, PARENT_NAME } from "../src/constants.js";
+import { PARENT_NAME } from "../src/constants.js";
+import { selectComplianceUpdates } from "../src/compliance.js";
+import { dnsEncodeName } from "../src/dnsEncode.js";
+import { parseFlags } from "../../shared/src/cli.js";
 import { sepolia } from "viem/chains";
-
-function parseFlags(argv: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i]?.startsWith("--")) {
-      out[argv[i]!.slice(2)] = argv[i + 1] ?? "";
-      i++;
-    }
-  }
-  return out;
-}
 
 async function main() {
   const [label, ...rest] = process.argv.slice(2);
@@ -48,22 +39,14 @@ async function main() {
   const fullName = `${label}.${PARENT_NAME}`;
   const node = namehash(fullName);
 
-  const values: Record<string, string | undefined> = {
-    [COMPLIANCE_KEYS.kyc]: flags["kyc"],
-    [COMPLIANCE_KEYS.jurisdiction]: flags["jurisdiction"],
-    [COMPLIANCE_KEYS.accreditationExpiry]: flags["accreditation-expiry"],
-    [COMPLIANCE_KEYS.lockupUntil]: flags["lockup-until"],
-  };
-
-  const calls = Object.entries(values)
-    .filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== "")
-    .map(([key, value]) =>
-      encodeFunctionData({
-        abi: permissionedResolverAbi,
-        functionName: "setText",
-        args: [node, key, value],
-      }),
-    );
+  const updates = selectComplianceUpdates(flags);
+  const calls = updates.map(({ key, value }) =>
+    encodeFunctionData({
+      abi: permissionedResolverAbi,
+      functionName: "setText",
+      args: [node, key, value],
+    }),
+  );
 
   if (calls.length === 0) {
     console.error("No values provided — pass at least one of --kyc / --jurisdiction / --accreditation-expiry / --lockup-until");
@@ -84,14 +67,11 @@ async function main() {
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 
   console.log(
-    "\nOptional (on-brief for the ENS track): scope future writes of " +
-      "compliance.kyc to a KYC-provider address, so the issuer key isn't the " +
-      "only thing that can update it:\n",
+    "\nTo scope future writes of compliance.kyc to a KYC-provider address " +
+      "(on-brief for the ENS track), run:\n",
   );
-  console.log(
-    `  authorizeTextRoles(dnsEncodedName, "${COMPLIANCE_KEYS.kyc}", <kycProviderAddress>, true)`,
-  );
-  console.log(`  toName (DNS-encoded) = ${toHex(packetToBytes(fullName))}`);
+  console.log(`  npm run ens:authorize-kyc-provider -- ${label} <kycProviderAddress>`);
+  console.log(`  (toName, DNS-encoded, would be ${dnsEncodeName(fullName)})`);
 }
 
 main().catch((err) => {
