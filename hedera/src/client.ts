@@ -34,12 +34,23 @@ let cached:
     }
   | undefined;
 
+function normalizePrivateKey(raw: string): `0x${string}` {
+  // Accept the key with or without a leading 0x (common export-tool quirk).
+  const withPrefix = raw.startsWith("0x") ? raw : `0x${raw}`;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(withPrefix)) {
+    throw new Error(
+      "HEDERA_OPERATOR_KEY doesn't look like a 32-byte hex key (64 hex " +
+        "chars, with or without a leading 0x). Must be the account's ECDSA " +
+        "hex key, not Hedera Portal's DER-encoded default export.",
+    );
+  }
+  return withPrefix as `0x${string}`;
+}
+
 function getSigner() {
   if (!cached) {
-    // Must be the account's ECDSA hex key, not Hedera Portal's DER-encoded
-    // default export — see hardhat.config.cjs for the same caveat.
     const issuerAccount = privateKeyToAccount(
-      requireEnv("HEDERA_OPERATOR_KEY") as `0x${string}`,
+      normalizePrivateKey(requireEnv("HEDERA_OPERATOR_KEY")),
     );
     const walletClient = createWalletClient({
       account: issuerAccount,
