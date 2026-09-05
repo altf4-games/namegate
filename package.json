@@ -9,14 +9,19 @@
     "ens:register-investor": "node --env-file=.env --import tsx ens/scripts/02-register-investor.ts",
     "ens:set-compliance": "node --env-file=.env --import tsx ens/scripts/03-set-compliance.ts",
     "ens:read": "node --env-file=.env --import tsx ens/scripts/04-read-compliance.ts",
-    "hedera:deploy-bond": "node --env-file=.env --import tsx hedera/scripts/01-deploy-bond.ts"
+    "hedera:compile": "hardhat compile",
+    "hedera:deploy-control-list": "node --env-file=.env --import tsx hedera/scripts/01-deploy-control-list.ts",
+    "hedera:deploy-bond": "node --env-file=.env --import tsx hedera/scripts/02-deploy-bond.ts",
+    "hedera:register-control-list": "node --env-file=.env --import tsx hedera/scripts/03-register-control-list.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "hardhat": "^2.29.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "@types/node": "^22.10.2"
+    "typescript": "^5.7.2"
   }
 }
