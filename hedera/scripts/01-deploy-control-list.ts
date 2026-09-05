@@ -1,6 +1,6 @@
 // Deploys NameGateEnsControlList to
 // Hedera testnet, reading bytecode straight from Hardhat's compiled
-// artifact (run `npm run hedera:compile` first). Uses viem directly rather
+// artifact (run `npm run compile` first). Uses viem directly rather
 // than Hardhat's own script runner — Hardhat 2's ts-node integration
 // conflicts with this repo's `"type": "module"`, which the rest of the
 // tooling needs.
@@ -13,7 +13,7 @@ import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.j
 
 const artifactPath = fileURLToPath(
   new URL(
-    "../../artifacts/hedera/contracts/NameGateEnsControlList.sol/NameGateEnsControlList.json",
+    "../../artifacts/contracts/hedera/NameGateEnsControlList.sol/NameGateEnsControlList.json",
     import.meta.url,
   ),
 );

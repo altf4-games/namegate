@@ -14,12 +14,16 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./hedera/contracts",
-    tests: "./hedera/test",
+    sources: "./contracts",
+    tests: "./test/contracts",
     cache: "./cache",
     artifacts: "./artifacts",
   },
   networks: {
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL ?? "",
+      chainId: 11155111,
+    },
     hederaTestnet: {
       url: HEDERA_RPC_URL,
       chainId: 296,
