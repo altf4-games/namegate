@@ -19,6 +19,7 @@ import { sepolia } from "viem/chains";
 import { permissionedResolverAbi } from "../src/abi.js";
 import { COMPLIANCE_KEYS, PARENT_NAME } from "../src/constants.js";
 import { dnsEncodeName } from "../src/dnsEncode.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 async function main() {
   const [label, providerAddress, flag] = process.argv.slice(2);
@@ -55,7 +56,7 @@ async function main() {
     chain: sepolia,
     account: issuerAccount,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Authorizing the KYC provider");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 
   console.log(

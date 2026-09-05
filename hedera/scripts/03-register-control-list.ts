@@ -8,6 +8,7 @@
 
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
 import { externalControlListManagementAbi } from "../src/abi.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 async function main() {
   const bondAddress = process.env.BOND_ADDRESS as `0x${string}` | undefined;
@@ -47,7 +48,7 @@ async function main() {
     chain: undefined,
     account: issuerAccount,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Registering the control list");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 
   const count = await publicClient.readContract({

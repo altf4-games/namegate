@@ -23,6 +23,7 @@ import {
 import { dnsEncodeName } from "../src/dnsEncode.js";
 import { parseFlags } from "../../shared/src/cli.js";
 import { sepolia } from "viem/chains";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 async function main() {
   const [label, ...rest] = process.argv.slice(2);
@@ -110,7 +111,7 @@ async function main() {
     chain: sepolia,
     account: walletClient.account!,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Setting compliance records");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 
   console.log(

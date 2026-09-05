@@ -25,6 +25,7 @@ import {
   describeRecord,
   type ComplianceRecord,
 } from "../src/beacon.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 // Sent on top of the quoted fee to absorb a fee change between quoting and
 // mining. The contract refunds the unused remainder, so this is not a tip.
@@ -90,10 +91,7 @@ async function main() {
   const hash = await walletClient.writeContract(request as never);
   console.log(`Publish tx: ${hash}`);
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  if (receipt.status !== "success") {
-    throw new Error(`publish() reverted. Receipt status: ${receipt.status}`);
-  }
+  const receipt = await confirmTransaction(publicClient, hash, "publish()");
   console.log(`Mined in block ${receipt.blockNumber}, gas used ${receipt.gasUsed}`);
 
   let messageId: string | undefined;

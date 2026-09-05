@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 const artifactPath = fileURLToPath(
   new URL(
@@ -35,7 +36,7 @@ async function main() {
     chain: undefined,
     account: issuerAccount,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Control list deployment");
   if (!receipt.contractAddress) {
     throw new Error("No contractAddress in deployment receipt");
   }

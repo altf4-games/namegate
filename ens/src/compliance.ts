@@ -8,6 +8,14 @@
 
 import { COMPLIANCE_KEYS } from "./constants.js";
 
+// NOTE: there is deliberately no eligibility rule in this file. The
+// authorization decision lives in ENSComplianceBeacon.sol and is read back
+// on-chain — see ens/src/beacon.ts. A TypeScript copy of that rule existed
+// here and drifted: it never learned about lockup periods, so it reported a
+// locked-up investor as eligible while the contract blocked them. Two
+// implementations of one rule is the bug; one of them being tested does not
+// fix it.
+
 /**
  * Parses a "YYYY-MM-DD" date into Unix seconds (UTC midnight).
  *
@@ -59,46 +67,11 @@ export function isExpired(expirySeconds: bigint, nowSeconds: bigint): boolean {
   return expirySeconds <= nowSeconds;
 }
 
-export type EligibilityInput = {
-  kycStatus: string | undefined; // the raw compliance.kyc text record value
-  expirySeconds: bigint; // the subname's registry expiry (== accreditation expiry)
-  nowSeconds: bigint;
-};
-
-export type EligibilityResult = {
-  eligible: boolean;
-  reason: string;
-};
-
 /**
- * The ENS-side half of "Investor B blocked, here's why" — this is the exact
- * function the beacon's on-chain logic will eventually mirror in Solidity
- * (docs/ARCHITECTURE.md, Layer 3's `isAuthorized`). Kept here as plain,
- * heavily-tested TypeScript first.
- */
-export function evaluateEligibility(input: EligibilityInput): EligibilityResult {
-  if (input.kycStatus !== "verified") {
-    return {
-      eligible: false,
-      reason: `KYC status is "${input.kycStatus ?? "(unset)"}", not "verified"`,
-    };
-  }
-  if (isExpired(input.expirySeconds, input.nowSeconds)) {
-    return {
-      eligible: false,
-      reason: `accreditation expired at ${new Date(Number(input.expirySeconds) * 1000).toISOString()}`,
-    };
-  }
-  return { eligible: true, reason: "KYC verified and accreditation current" };
-}
-
-/**
- * Maps 03-set-compliance.ts's parsed CLI flags onto the actual
- * compliance.* record keys, dropping any flag that wasn't provided (or was
- * provided empty). Pulled out of the script so this mapping — the single
- * place a typo'd flag name would silently mean "nothing gets written for
- * that field" — is unit tested directly, independent of viem's
- * encodeFunctionData.
+ * Picks the compliance records to write from parsed CLI flags, in a stable
+ * order. A flag that was not passed, or passed empty, is left alone rather
+ * than written as an empty string — clearing a record and never setting it
+ * are different intentions.
  */
 export function selectComplianceUpdates(
   flags: Record<string, string>,

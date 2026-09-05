@@ -29,7 +29,7 @@ async function main() {
 
   const fullName = `${label}.${PARENT_NAME}`;
   // anyId is the LABEL's own labelhash, not a full-name namehash — see the
-  // matching comment/fix in 06-check-eligibility.ts. hasRoles(anyId, ...) on
+  // same distinction the beacon relies on. hasRoles(anyId, ...) on
   // PermissionedRegistry resolves this internally via getResource(anyId),
   // per source (contracts-v2/src/registry/PermissionedRegistry.sol:374),
   // so any of {labelhash, tokenId, resource} works here — just not a

@@ -19,6 +19,7 @@ import {
   RegulationType,
   RegulationSubType,
 } from "../src/constants.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
@@ -122,7 +123,7 @@ async function main() {
     chain: undefined,
     account: issuerAccount,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Bond deployment");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
   console.log(`\nSave to .env: BOND_ADDRESS=${bondAddress}`);
 }

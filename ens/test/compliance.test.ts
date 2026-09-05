@@ -11,7 +11,6 @@ import assert from "node:assert/strict";
 import {
   dateToUnixSeconds,
   isExpired,
-  evaluateEligibility,
   resolveExpiry,
   parseExpiryFlag,
   selectComplianceUpdates,
@@ -66,75 +65,6 @@ describe("isExpired", () => {
   test("handles zero as a valid boundary", () => {
     assert.equal(isExpired(0n, 0n), true);
     assert.equal(isExpired(1n, 0n), false);
-  });
-});
-
-describe("evaluateEligibility", () => {
-  const future = 9_999_999_999n; // far future
-  const past = 1n; // 1970, long expired
-
-  test("eligible when KYC verified and not expired", () => {
-    const result = evaluateEligibility({
-      kycStatus: "verified",
-      expirySeconds: future,
-      nowSeconds: 1_000_000_000n,
-    });
-    assert.equal(result.eligible, true);
-    assert.match(result.reason, /KYC verified and accreditation current/);
-  });
-
-  test("blocked when KYC status is missing", () => {
-    const result = evaluateEligibility({
-      kycStatus: undefined,
-      expirySeconds: future,
-      nowSeconds: 1_000_000_000n,
-    });
-    assert.equal(result.eligible, false);
-    assert.match(result.reason, /\(unset\)/);
-  });
-
-  test("blocked when KYC status is anything other than exactly 'verified'", () => {
-    for (const status of ["pending", "rejected", "Verified", "VERIFIED", "verified "]) {
-      const result = evaluateEligibility({
-        kycStatus: status,
-        expirySeconds: future,
-        nowSeconds: 1_000_000_000n,
-      });
-      assert.equal(result.eligible, false, `expected "${status}" to be rejected`);
-      assert.match(result.reason, new RegExp(`"${status}"`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    }
-  });
-
-  test("blocked when accreditation has expired, even with valid KYC", () => {
-    const result = evaluateEligibility({
-      kycStatus: "verified",
-      expirySeconds: past,
-      nowSeconds: 1_000_000_000n,
-    });
-    assert.equal(result.eligible, false);
-    assert.match(result.reason, /accreditation expired/);
-  });
-
-  test("KYC is checked before expiry — reason reflects the first failure", () => {
-    // Both conditions fail; the reason should be about KYC, not expiry,
-    // since evaluateEligibility checks KYC status first.
-    const result = evaluateEligibility({
-      kycStatus: "pending",
-      expirySeconds: past,
-      nowSeconds: 1_000_000_000n,
-    });
-    assert.equal(result.eligible, false);
-    assert.match(result.reason, /KYC status/);
-  });
-
-  test("expiry exactly at now blocks — reuses isExpired's <= boundary", () => {
-    const result = evaluateEligibility({
-      kycStatus: "verified",
-      expirySeconds: 500n,
-      nowSeconds: 500n,
-    });
-    assert.equal(result.eligible, false);
-    assert.match(result.reason, /accreditation expired/);
   });
 });
 

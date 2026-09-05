@@ -15,7 +15,7 @@
 // --expires-in-seconds is a TESTING-ONLY escape hatch: --accreditation-expiry
 // only has day granularity, so it can't demo the expiry actually flipping
 // within a single session. This sets a real registry expiry N seconds out —
-// wait that long, then run ens:check-eligibility and watch it flip from
+// wait that long, then run ens:beacon-read and watch it flip from
 // ELIGIBLE to BLOCKED. Don't use this for a real investor registration.
 //
 // Run:
@@ -28,6 +28,7 @@ import { userRegistryAbi, INVESTOR_ROLE_BITMAP } from "../src/abi.js";
 import { RESERVED_LABELS } from "../src/constants.js";
 import { parseExpiryFlag, resolveExpiry } from "../src/compliance.js";
 import { sepolia } from "viem/chains";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 async function main() {
   const [label, investorAddress, flag, flagValue] = process.argv.slice(2);
@@ -82,7 +83,7 @@ async function main() {
     chain: sepolia,
     account: walletClient.account!,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Registering the subname");
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 }
 

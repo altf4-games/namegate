@@ -23,6 +23,7 @@ import {
   ALL_ROLES,
 } from "../src/abi.js";
 import { sepolia } from "viem/chains";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 // Deployed proxy implementations — see the deployments table cross-check in
 // research-notes/task-c-ensv2-writepath.md [c2]. Re-verify against
@@ -58,7 +59,7 @@ async function deployProxy(
     chain: sepolia,
     account: walletClient.account!,
   });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await confirmTransaction(publicClient, hash, "Namespace setup");
 
   const log = receipt.logs.find(
     (l) => l.address.toLowerCase() === ENSV2_SEPOLIA.verifiableFactory.toLowerCase(),
@@ -113,7 +114,7 @@ async function main() {
     chain: sepolia,
     account: walletClient.account!,
   });
-  await publicClient.waitForTransactionReceipt({ hash });
+  await confirmTransaction(publicClient, hash, "Namespace setup");
   console.log(`  -> done (tx ${hash})`);
 
   console.log("\nSave these to .env for the next scripts:");

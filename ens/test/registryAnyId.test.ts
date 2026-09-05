@@ -1,6 +1,6 @@
 // Node's built-in test runner. Run with: npm run test:unit
 //
-// Locks in a real bug found live on 2026-09: 06-check-eligibility.ts and
+// Locks in a real bug found live on 2026-09: two scripts and
 // 07-check-transfer-role.ts both used namehash(fullName) as the registry's
 // `anyId` argument, when the registry actually expects labelhash(label) —
 // a completely different value. getExpiry() and hasRoles() both silently

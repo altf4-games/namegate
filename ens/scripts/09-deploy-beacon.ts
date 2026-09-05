@@ -18,6 +18,7 @@ import { namehash } from "viem/ens";
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
 import { PARENT_NAME } from "../src/constants.js";
 import { CCIP_SEPOLIA_ROUTER, CCIP_HEDERA_TESTNET_SELECTOR } from "../src/ccip.js";
+import { confirmTransaction } from "../../shared/src/tx.js";
 
 const artifactPath = fileURLToPath(
   new URL(
@@ -80,11 +81,7 @@ async function main() {
   });
 
   console.log(`Deploy tx: ${hash}`);
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-  if (receipt.status !== "success") {
-    throw new Error(`Deployment reverted. Receipt status: ${receipt.status}`);
-  }
+  const receipt = await confirmTransaction(publicClient, hash, "Beacon deployment");
   if (!receipt.contractAddress) {
     throw new Error("Deployment succeeded but no contract address in the receipt.");
   }
