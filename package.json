@@ -28,8 +28,15 @@
     "hedera:mirror-read": "node --env-file=.env --import tsx hedera/scripts/06-mirror-read.ts",
     "hedera:check-bond-access": "node --env-file=.env --import tsx hedera/scripts/07-check-bond-access.ts",
     "hedera:submit-attestation": "node --env-file=.env --import tsx hedera/scripts/08-submit-attestation.ts",
+    "hedera:issue": "node --env-file=.env --import tsx hedera/scripts/09-issue-tokens.ts",
+    "hedera:set-coupon": "node --env-file=.env --import tsx hedera/scripts/10-set-coupon.ts",
+    "hedera:check-coupon": "node --env-file=.env --import tsx hedera/scripts/11-check-coupon.ts",
+    "hedera:deploy-distributor": "node --env-file=.env --import tsx hedera/scripts/12-deploy-coupon-distributor.ts",
+    "hedera:fund-distributor": "node --env-file=.env --import tsx hedera/scripts/13-fund-distributor.ts",
+    "hedera:distribute": "node --env-file=.env --import tsx hedera/scripts/14-distribute-coupon.ts",
     "test:live": "node --env-file=.env --import tsx --test ens/test/live/beaconLive.test.ts",
-    "test:live:hedera": "node --env-file=.env --import tsx --test hedera/test/live/mirrorLive.test.ts"
+    "test:live:hedera": "node --env-file=.env --import tsx --test hedera/test/live/mirrorLive.test.ts",
+    "test:live:coupon": "node --env-file=.env --import tsx --test hedera/test/live/couponLive.test.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

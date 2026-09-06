@@ -150,3 +150,203 @@ export const externalControlListManagementAbi = [
     outputs: [{ name: "externalControlListsCount_", type: "uint256" }],
   },
 ] as const;
+
+// Confirmed against ats-v3.1.0-ats source directly — the docs this project
+// started from (initializeCoupon/cancelCoupon/forceCancelCoupon) describe a
+// DIFFERENT ATS version. v3.1.0-ats's coupon surface lives on IBond/IBondRead
+// (layer_2/interfaces/bond/), not a separate Coupon.sol, and only exposes
+// setCoupon plus the four read functions below.
+export const bondErc20Abi = [
+  {
+    type: "function",
+    name: "totalSupply",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "decimals",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "_tokenHolder", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // ERC1594.issue — gated by ROLE_ISSUER or ROLE_AGENT (issuer already holds
+  // ROLE_ISSUER from deploy). Checks the RECIPIENT's own compliance
+  // (onlyCompliant(address(0), _tokenHolder, false) — checkSender=false, so
+  // the caller's own compliance is never checked here, only the holder's).
+  // Confirmed live: issuance to an unauthorized address reverts with
+  // AccountIsBlocked for the holder, the same error canTransferFrom uses.
+  {
+    type: "function",
+    name: "issue",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_tokenHolder", type: "address" },
+      { name: "_value", type: "uint256" },
+      { name: "_data", type: "bytes" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+// CONFIRMED BUG, found live 2026-09-06: v3.1.0-ats's 5-field Coupon struct
+// (recordDate, executionDate, rate, rateDecimals, period) is NOT what the
+// deployed factory actually accepts — setCoupon reverted against it with an
+// undecodable selector. There is no "v4.0.0-ats" git tag (confirmed: the
+// published tags jump straight from v3.1.0-ats to v4.1.0-ats), so the
+// deployed version's exact source cannot be diffed byte-for-byte the way
+// every other struct on this project was. Resolved empirically instead: a
+// simulateContract call using v4.1.0-ats's 8-field Coupon shape
+// (recordDate, executionDate, startDate, endDate, fixingDate, rate,
+// rateDecimals, rateStatus) SUCCEEDED against the real deployed bond. That
+// is the shape below, confirmed by the chain accepting it, not by trusting
+// either tag's docs.
+export const bondCouponAbi = [
+  // Gated by ROLE_CORPORATE_ACTION (issuer already holds it from deploy).
+  // Three date pairs are validated: (startDate, endDate), (recordDate,
+  // executionDate), (fixingDate, executionDate) — each must be non-decreasing
+  // (Bond.sol's validateDates). recordDate AND fixingDate must EACH be
+  // strictly future at call time (ScheduledTasksCommon.WrongTimestamp,
+  // checked independently for both).
+  {
+    type: "function",
+    name: "setCoupon",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "_newCoupon",
+        type: "tuple",
+        components: [
+          { name: "recordDate", type: "uint256" },
+          { name: "executionDate", type: "uint256" },
+          { name: "startDate", type: "uint256" },
+          { name: "endDate", type: "uint256" },
+          { name: "fixingDate", type: "uint256" },
+          { name: "rate", type: "uint256" },
+          { name: "rateDecimals", type: "uint8" },
+          // RateCalculationStatus enum: 0 = PENDING, 1 = SET. Not checked by
+          // _getCouponAmountFor at this version (confirmed by reading
+          // BondStorageWrapper.sol — the amount formula never inspects this
+          // field), but SET is the honest value for a coupon whose rate is
+          // already final, which every coupon this project creates is.
+          { name: "rateStatus", type: "uint8" },
+        ],
+      },
+    ],
+    outputs: [{ name: "couponID_", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getCoupon",
+    stateMutability: "view",
+    inputs: [{ name: "_couponID", type: "uint256" }],
+    outputs: [
+      {
+        name: "registeredCoupon_",
+        type: "tuple",
+        components: [
+          {
+            name: "coupon",
+            type: "tuple",
+            components: [
+              { name: "recordDate", type: "uint256" },
+              { name: "executionDate", type: "uint256" },
+              { name: "startDate", type: "uint256" },
+              { name: "endDate", type: "uint256" },
+              { name: "fixingDate", type: "uint256" },
+              { name: "rate", type: "uint256" },
+              { name: "rateDecimals", type: "uint8" },
+              { name: "rateStatus", type: "uint8" },
+            ],
+          },
+          { name: "snapshotId", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  // tokenBalance/decimals/recordDateReached are only populated once
+  // recordDate has PASSED (block.timestamp > recordDate, strictly) — before
+  // that every field but the nested coupon's own static data reads as
+  // zero/false, not reverted. Note this version NESTS the whole coupon
+  // struct rather than flattening rate/period fields into CouponFor
+  // directly — a real, confirmed shape difference from v3.1.0-ats's layout.
+  {
+    type: "function",
+    name: "getCouponFor",
+    stateMutability: "view",
+    inputs: [
+      { name: "_couponID", type: "uint256" },
+      { name: "_account", type: "address" },
+    ],
+    outputs: [
+      {
+        name: "couponFor_",
+        type: "tuple",
+        components: [
+          { name: "tokenBalance", type: "uint256" },
+          { name: "decimals", type: "uint8" },
+          { name: "recordDateReached", type: "bool" },
+          {
+            name: "coupon",
+            type: "tuple",
+            components: [
+              { name: "recordDate", type: "uint256" },
+              { name: "executionDate", type: "uint256" },
+              { name: "startDate", type: "uint256" },
+              { name: "endDate", type: "uint256" },
+              { name: "fixingDate", type: "uint256" },
+              { name: "rate", type: "uint256" },
+              { name: "rateDecimals", type: "uint8" },
+              { name: "rateStatus", type: "uint8" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  // The exact fraction CouponDistributor pays out from:
+  //   numerator / denominator
+  //     = tokenBalance * nominalValue * rate * (endDate - startDate)
+  //       ─────────────────────────────────────────────────────────
+  //       10^(decimals + nominalValueDecimals + rateDecimals) * 365 days
+  // Confirmed against v4.1.0-ats's BondStorageWrapper.sol._getCouponAmountFor
+  // directly — the only change from v3.1.0-ats's formula is that `period`
+  // is now computed as `endDate - startDate` rather than stored directly;
+  // the decimal scaling still cancels exactly, so this fraction is a plain
+  // amount in the bond's declared currency, not a token-decimals-scaled one.
+  {
+    type: "function",
+    name: "getCouponAmountFor",
+    stateMutability: "view",
+    inputs: [
+      { name: "_couponID", type: "uint256" },
+      { name: "_account", type: "address" },
+    ],
+    outputs: [
+      {
+        name: "couponAmountFor_",
+        type: "tuple",
+        components: [
+          { name: "numerator", type: "uint256" },
+          { name: "denominator", type: "uint256" },
+          { name: "recordDateReached", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getCouponCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "couponCount_", type: "uint256" }],
+  },
+] as const;
