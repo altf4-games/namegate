@@ -15,6 +15,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { namehash } from "viem/ens";
+import { getContractAddress } from "viem";
+import {
+  publicClient as hederaPublicClient,
+  getIssuerAccount as getHederaIssuerAccount,
+} from "../../hedera/src/client.js";
 import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
 import { PARENT_NAME } from "../src/constants.js";
 import { CCIP_SEPOLIA_ROUTER, CCIP_HEDERA_TESTNET_SELECTOR } from "../src/ccip.js";
@@ -42,7 +47,24 @@ async function main() {
   };
 
   const registry = requireEnv("ISSUER_USER_REGISTRY_ADDRESS") as `0x${string}`;
-  const receiver = requireEnv("ENS_CONTROL_LIST_ADDRESS") as `0x${string}`;
+  // MIRROR_ADDRESS is deliberately not read from .env. Both contracts take
+  // the other's address as an immutable constructor argument — the beacon's
+  // receiver, the mirror's sourceSender — which is a genuine mutual
+  // reference: neither can exist first with the real address of the other.
+  //
+  // Resolved by predicting the mirror's address before it exists. A plain
+  // CREATE deployment's address is fully determined by the deployer's
+  // address and nonce (no CREATE2 salt needed), so the Hedera operator's
+  // NEXT contract address can be computed here, on Sepolia, before anything
+  // is deployed on Hedera at all. hedera:deploy-mirror deploys immediately
+  // after this and verifies it landed exactly here — if some other Hedera
+  // transaction sneaks in from this account first, that script fails loudly
+  // rather than silently producing a beacon that points at empty space.
+  const hederaAccount = getHederaIssuerAccount();
+  const hederaNonce = await hederaPublicClient.getTransactionCount({
+    address: hederaAccount.address,
+  });
+  const receiver = getContractAddress({ from: hederaAccount.address, nonce: BigInt(hederaNonce) });
   const expectedResolver = requireEnv("ISSUER_RESOLVER_ADDRESS") as `0x${string}`;
   const parentNode = namehash(PARENT_NAME);
   // Generous relative to a simple mapping write, because the receiver has to
@@ -60,7 +82,10 @@ async function main() {
   console.log(`  resolver:  ${expectedResolver} (pinned — records from any other are ignored)`);
   console.log(`  router:    ${CCIP_SEPOLIA_ROUTER}`);
   console.log(`  selector:  ${CCIP_HEDERA_TESTNET_SELECTOR}`);
-  console.log(`  receiver:  ${receiver}`);
+  console.log(
+    `  receiver:  ${receiver} (predicted ENSComplianceMirror address — ` +
+      `Hedera operator ${hederaAccount.address} at nonce ${hederaNonce})`,
+  );
   console.log(`  gas limit: ${destinationGasLimit}`);
   console.log();
 
@@ -115,6 +140,12 @@ async function main() {
   console.log();
   console.log("Add to .env:");
   console.log(`BEACON_ADDRESS=${receipt.contractAddress}`);
+  console.log();
+  console.log(
+    "Next: run `npm run hedera:deploy-mirror` immediately, with no other " +
+      `transaction from ${hederaAccount.address} on Hedera in between — it ` +
+      `must land at ${receiver} or this beacon's receiver is unreachable.`,
+  );
 }
 
 main().catch((error) => {
