@@ -45,6 +45,9 @@ before(() => {
     { type: "function", name: "maxStaleness", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
     { type: "function", name: "isAuthorized", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "bool" }] },
     { type: "function", name: "staleness", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "attestationThreshold", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "attestationValidityWindow", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "attestationSigners", stateMutability: "view", inputs: [], outputs: [{ type: "address[]" }] },
   ] as const;
 });
 
@@ -88,6 +91,18 @@ describe("ENSComplianceMirror, live on Hedera testnet", () => {
       functionName: "maxStaleness",
     });
     assert.ok((value as bigint) > 0n);
+  });
+
+  test("the attestation fallback is configured with a real, funded threshold", async () => {
+    const [threshold, window, signers] = await Promise.all([
+      publicClient.readContract({ address: mirror, abi: mirrorAbi, functionName: "attestationThreshold" }),
+      publicClient.readContract({ address: mirror, abi: mirrorAbi, functionName: "attestationValidityWindow" }),
+      publicClient.readContract({ address: mirror, abi: mirrorAbi, functionName: "attestationSigners" }),
+    ]);
+    assert.ok((threshold as bigint) > 0n);
+    assert.ok((window as bigint) > 0n);
+    assert.ok((threshold as bigint) <= BigInt((signers as string[]).length));
+    assert.ok((signers as string[]).length >= 2, "expect at least 2 configured signers");
   });
 
   test("the bond's only compliance gate is the mirror, not the old control list", async () => {

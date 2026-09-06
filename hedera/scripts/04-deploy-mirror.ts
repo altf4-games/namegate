@@ -71,6 +71,22 @@ async function main() {
   // takes effect within a day even in the worst case.
   const maxStaleness = BigInt(process.env.MAX_STALENESS_SECONDS ?? "86400");
 
+  // The k-of-n signer set for the EIP-712 attestation fallback — the path
+  // used during live Q&A while a CCIP message is still in flight. Testnet
+  // demo keys only; see docs/AI-DISCLOSURE.md-adjacent notes on rotating
+  // these to a real key-management setup (a Privy key quorum is a natural
+  // fit) before anything resembling production.
+  const signersRaw = requireEnv("ATTESTATION_SIGNERS"); // comma-separated addresses
+  const signers = signersRaw.split(",").map((s) => s.trim()) as `0x${string}`[];
+  const threshold = BigInt(process.env.ATTESTATION_THRESHOLD ?? "2");
+  // How long a signed attestation stays usable, and how far its own claimed
+  // timestamp may lead the chain's clock. 10 minutes: long enough to cover
+  // clock drift and the time to actually broadcast the transaction, short
+  // enough that a captured signature set goes stale fast.
+  const attestationValidityWindow = BigInt(
+    process.env.ATTESTATION_VALIDITY_WINDOW_SECONDS ?? "600",
+  );
+
   const account = getIssuerAccount();
   const walletClient = getWalletClient();
 
@@ -79,6 +95,9 @@ async function main() {
   console.log(`  source selector: ${SEPOLIA_SOURCE_SELECTOR} (Sepolia, as seen from Hedera)`);
   console.log(`  source sender:   ${beaconAddress} (the only trusted beacon)`);
   console.log(`  max staleness:   ${maxStaleness}s`);
+  console.log(`  signers:         ${signers.join(", ")}`);
+  console.log(`  threshold:       ${threshold} of ${signers.length}`);
+  console.log(`  attestation window: ${attestationValidityWindow}s`);
   console.log();
 
   const hash = await walletClient.deployContract({
@@ -86,7 +105,15 @@ async function main() {
     bytecode: artifact.bytecode,
     account,
     chain: publicClient.chain,
-    args: [HEDERA_CCIP_ROUTER, SEPOLIA_SOURCE_SELECTOR, beaconAddress, maxStaleness],
+    args: [
+      HEDERA_CCIP_ROUTER,
+      SEPOLIA_SOURCE_SELECTOR,
+      beaconAddress,
+      maxStaleness,
+      signers,
+      threshold,
+      attestationValidityWindow,
+    ],
   });
 
   console.log(`Deploy tx: ${hash}`);

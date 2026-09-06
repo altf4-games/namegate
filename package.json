@@ -27,6 +27,7 @@
     "hedera:swap-control-list": "node --env-file=.env --import tsx hedera/scripts/05-swap-control-list.ts",
     "hedera:mirror-read": "node --env-file=.env --import tsx hedera/scripts/06-mirror-read.ts",
     "hedera:check-bond-access": "node --env-file=.env --import tsx hedera/scripts/07-check-bond-access.ts",
+    "hedera:submit-attestation": "node --env-file=.env --import tsx hedera/scripts/08-submit-attestation.ts",
     "test:live": "node --env-file=.env --import tsx --test ens/test/live/beaconLive.test.ts",
     "test:live:hedera": "node --env-file=.env --import tsx --test hedera/test/live/mirrorLive.test.ts"
   },
