@@ -38,8 +38,15 @@ module.exports = {
     },
   },
   sourcify: {
-    // HashScan reads Sourcify, so this is the Hedera verification path.
+    // HashScan reads verification status from the public Sourcify service —
+    // confirmed live: GET https://sourcify.dev/server/chains lists chain 296
+    // (Hedera Testnet) and 295 (mainnet) as supported=true. The
+    // "server-verify.hashscan.io" hostname some docs mention is a Cloudflare
+    // redirect back to sourcify.dev/server, not a separate instance, so
+    // pointing here directly is the same destination with one less hop.
     enabled: true,
+    apiUrl: "https://sourcify.dev/server",
+    browserUrl: "https://repo.sourcify.dev",
   },
   networks: {
     sepolia: {
