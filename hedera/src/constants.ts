@@ -42,11 +42,37 @@ export const BOND_CONFIG_ID =
 // from v8.0.0-ats's atsRoles.generated.ts values. Using the wrong set is a
 // second, independent way for deployBond to revert even after the
 // SecurityData field order is fixed.
+//
+// CONFIRMED BUG, found 2026-09-06: this object used to have only one
+// "control list" role, misleadingly named ROLE_CONTROL_LIST_MANAGER but
+// actually holding _CONTROL_LIST_ROLE's value. v3.1.0-ats's own
+// layer_1/constants/roles.sol defines these as two DIFFERENT roles:
+//   _CONTROL_LIST_ROLE           = 0xca537e1c...cac3
+//   _CONTROL_LIST_MANAGER_ROLE   = 0x0e625647...72e75
+// The first gates ATS's own internal blacklist (ControlListFacet) — a
+// feature this project doesn't use (bondData.isWhiteList is false). The
+// second is what actually gates addExternalControlList /
+// removeExternalControlList, which is the one this project depends on.
+// The bug went undetected from the first bond deploy until the day this
+// project first called addExternalControlList as a standalone transaction —
+// every earlier "verification" only checked hasRole() against the WRONG
+// role, which trivially returned true because that's the role that was
+// actually granted. The bond deployed before this fix landed needed
+// grantRole(ROLE_CONTROL_LIST_MANAGER, issuer) run once, live, to correct it
+// without a full redeploy.
 export const ATS_ROLES = {
   DEFAULT_ADMIN_ROLE:
     "0x0000000000000000000000000000000000000000000000000000000000000000",
-  ROLE_CONTROL_LIST_MANAGER:
+  // Gates ATS's own internal blacklist feature (ControlListFacet). Not used
+  // by this project's compliance design, but real and distinct from the role
+  // below — kept named accurately rather than removed, so nobody re-derives
+  // this confusion from scratch.
+  ROLE_CONTROL_LIST:
     "0xca537e1c88c9f52dc5692c96c482841c3bea25aafc5f3bfe96f645b5f800cac3",
+  // Gates addExternalControlList / removeExternalControlList — the role
+  // this project actually needs to swap in ENSComplianceMirror.
+  ROLE_CONTROL_LIST_MANAGER:
+    "0x0e625647b832ec7d4146c12550c31c065b71e0a698095568fd8320dd2aa72e75",
   ROLE_CORPORATE_ACTION:
     "0x8a139eeb747b9809192ae3de1b88acfd2568c15241a5c4f85db0443a536d77d6",
   ROLE_ISSUER:

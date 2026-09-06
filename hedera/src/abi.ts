@@ -123,6 +123,18 @@ export const externalControlListManagementAbi = [
     inputs: [{ name: "_controlList", type: "address" }],
     outputs: [{ name: "success_", type: "bool" }],
   },
+  // Confirmed against ats-v3.1.0-ats source
+  // (layer_1/externalControlLists/ExternalControlListManagement.sol): both
+  // gated by ROLE_CONTROL_LIST_MANAGER, both revert (ListedControlList /
+  // UnlistedControlList) rather than returning false on a no-op call — so a
+  // failed swap surfaces as a revert, not a silently ignored write.
+  {
+    type: "function",
+    name: "removeExternalControlList",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_controlList", type: "address" }],
+    outputs: [{ name: "success_", type: "bool" }],
+  },
   {
     type: "function",
     name: "isExternalControlList",

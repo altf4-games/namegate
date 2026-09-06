@@ -64,7 +64,7 @@ describe("hedera/src/constants.ts", () => {
 
     test("matches the v3.1.0-ats role hashes, NOT v8.0.0-ats's — this is the exact value that caused a live deployBond revert when wrong", () => {
       assert.equal(
-        ATS_ROLES.ROLE_CONTROL_LIST_MANAGER,
+        ATS_ROLES.ROLE_CONTROL_LIST,
         "0xca537e1c88c9f52dc5692c96c482841c3bea25aafc5f3bfe96f645b5f800cac3",
       );
       assert.equal(
@@ -83,7 +83,23 @@ describe("hedera/src/constants.ts", () => {
       );
     });
 
-    test("all four role hashes are distinct", () => {
+    test("ROLE_CONTROL_LIST_MANAGER is _CONTROL_LIST_MANAGER_ROLE, not _CONTROL_LIST_ROLE", () => {
+      // The exact bug this project shipped and then found live: these two
+      // names are easy to confuse, v3.1.0-ats keeps them as genuinely
+      // different roles, and only one of them gates
+      // addExternalControlList/removeExternalControlList. Confirmed against
+      // layer_1/constants/roles.sol directly, and against a live revert:
+      // AccessControlStorageWrapper.AccountHasNoRole reverted on
+      // addExternalControlList while hasRole(ROLE_CONTROL_LIST, issuer) was
+      // already true, which is what exposed the mix-up.
+      assert.equal(
+        ATS_ROLES.ROLE_CONTROL_LIST_MANAGER,
+        "0x0e625647b832ec7d4146c12550c31c065b71e0a698095568fd8320dd2aa72e75",
+      );
+      assert.notEqual(ATS_ROLES.ROLE_CONTROL_LIST_MANAGER, ATS_ROLES.ROLE_CONTROL_LIST);
+    });
+
+    test("all five role hashes are distinct", () => {
       const values = Object.values(ATS_ROLES);
       assert.equal(new Set(values).size, values.length);
     });
