@@ -4,6 +4,7 @@ import { NavBarConnected, NavBarUnconfigured } from "./components/NavBar";
 import { BondTerms } from "./components/BondTerms";
 import { InvestorCard } from "./components/InvestorCard";
 import { OnboardInvestor } from "./components/OnboardInvestor";
+import { ContractsPanel } from "./components/ContractsPanel";
 import { readInvestor, readBondTerms, type InvestorView, type BondTerms as BondTermsData } from "./lib/read";
 import { publishCompliance, distributeCoupon, type MinimalEip1193Provider } from "./lib/actions";
 import { loadInvestors, saveOnboardedInvestor, type InvestorEntry } from "./lib/investors";
@@ -174,6 +175,8 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
             getProvider={wallet.getProvider}
             onOnboarded={handleOnboarded}
           />
+
+          <ContractsPanel />
 
           {actionMessage && (
             <ActionBanner message={actionMessage} onDismiss={() => setActionMessage(null)} />

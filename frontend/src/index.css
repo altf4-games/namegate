@@ -98,3 +98,43 @@ button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+input,
+select {
+  border: 0.5px solid var(--border-strong);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-radius: var(--radius, 8px);
+  padding: 7px 10px;
+  font-size: 13px;
+  height: 34px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--fill-accent);
+  box-shadow: 0 0 0 2px var(--bg-accent);
+}
+
+input[type="date"] {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  input[type="date"] {
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] input[type="date"] {
+  color-scheme: dark;
+}
+:root[data-theme="light"] input[type="date"] {
+  color-scheme: light;
+}

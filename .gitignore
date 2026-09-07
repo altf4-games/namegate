@@ -16,3 +16,5 @@ coverage/
 broadcast/
 deployments/localhost/
 *.tsbuildinfo
+.vercel
+.env*
