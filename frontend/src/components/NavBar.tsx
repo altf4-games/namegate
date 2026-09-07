@@ -4,14 +4,16 @@ import { shortenAddress } from "../lib/format";
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="flex justify-between items-center rounded-full border-[0.5px] px-4 py-2.5"
+      className="flex flex-wrap justify-between items-center gap-2.5 rounded-full border-[0.5px] px-4 py-2.5"
       style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
     >
-      <div className="flex items-center gap-3.5">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3.5">
         <p className="font-medium text-[15px] m-0 tracking-tight">NameGate</p>
-        <Badge label="ENS" color="var(--fill-accent)" />
-        <Badge label="Hedera" color="var(--fill-success)" />
-        <Badge label="CCIP" color="var(--fill-pro)" />
+        <div className="flex flex-wrap gap-1.5">
+          <Badge label="ENS" color="var(--fill-accent)" />
+          <Badge label="Hedera" color="var(--fill-success)" />
+          <Badge label="CCIP" color="var(--fill-pro)" />
+        </div>
       </div>
       {children}
     </div>

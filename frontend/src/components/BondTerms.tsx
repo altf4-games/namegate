@@ -9,7 +9,7 @@ export function BondTerms({ terms }: { terms: BondTermsData }) {
   const recordDateReached = Number(terms.startDate) * 1000 < Date.now();
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <Metric label="Coupon rate" value={`${ratePercent}%`} />
       <Metric label="Period" value={`${periodDays}d`} />
       <Metric label="Supply" value={supply} />

@@ -12,6 +12,8 @@ import {
 import { publishCompliance, distributeCoupon, type MinimalEip1193Provider } from "./lib/actions";
 import { env } from "./lib/env";
 
+type ActionMessage = { kind: "success" | "error"; text: string; link?: string; linkLabel?: string };
+
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -55,7 +57,7 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
 
   async function handlePublish(label: string) {
     if (!wallet.connected) {
@@ -67,13 +69,15 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
     try {
       const { provider, account } = await wallet.getProvider();
       const result = await publishCompliance(provider, account, label);
-      setActionMessage(
-        `Published ${label}. CCIP message ${result.messageId} — track at ` +
-          `https://ccip.chain.link/msg/${result.messageId}`,
-      );
+      setActionMessage({
+        kind: "success",
+        text: `Published ${label} to Hedera over CCIP.`,
+        link: `https://ccip.chain.link/msg/${result.messageId}`,
+        linkLabel: "Track delivery",
+      });
       refresh();
     } catch (error) {
-      setActionMessage(`Publish failed: ${(error as Error).message}`);
+      setActionMessage({ kind: "error", text: `Publish failed: ${(error as Error).message}` });
     } finally {
       setBusyLabel(null);
     }
@@ -89,12 +93,15 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
     try {
       const { provider, account } = await wallet.getProvider();
       const result = await distributeCoupon(provider, account, investor.address);
-      setActionMessage(
-        `Paid ${investor.label} ${(Number(result.amountTinybar) / 1e8).toFixed(4)} HBAR — tx ${result.txHash}`,
-      );
+      setActionMessage({
+        kind: "success",
+        text: `Paid ${investor.label} ${(Number(result.amountTinybar) / 1e8).toFixed(4)} HBAR.`,
+        link: `https://hashscan.io/testnet/tx/${result.txHash}`,
+        linkLabel: "View on HashScan",
+      });
       refresh();
     } catch (error) {
-      setActionMessage(`Distribute failed: ${(error as Error).message}`);
+      setActionMessage({ kind: "error", text: `Distribute failed: ${(error as Error).message}` });
     } finally {
       setBusyLabel(null);
     }
@@ -105,7 +112,7 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
       {wallet.nav}
 
       <div className="px-1">
-        <p className="text-[34px] font-medium leading-tight m-0 mb-2.5 tracking-tight">
+        <p className="text-[26px] sm:text-[34px] font-medium leading-tight m-0 mb-2.5 tracking-tight">
           investora.namegate.eth
           <br />
           is cleared to receive.
@@ -115,9 +122,7 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
         </p>
       </div>
 
-      {state.status === "loading" && (
-        <p style={{ color: "var(--text-secondary)" }}>Reading Sepolia and Hedera testnet...</p>
-      )}
+      {state.status === "loading" && <DashboardSkeleton />}
       {state.status === "error" && (
         <p style={{ color: "var(--text-danger)" }}>Failed to read chain state: {state.message}</p>
       )}
@@ -138,7 +143,7 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
               </p>
               <button onClick={refresh}>Refresh</button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[state.investorA, state.investorB].map((investor) => (
                 <div className="flex flex-col gap-2" key={investor.label}>
                   <InvestorCard
@@ -163,12 +168,56 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
           </div>
 
           {actionMessage && (
-            <p className="text-[13px] break-all" style={{ color: "var(--text-secondary)" }}>
-              {actionMessage}
-            </p>
+            <ActionBanner message={actionMessage} onDismiss={() => setActionMessage(null)} />
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function ActionBanner({ message, onDismiss }: { message: ActionMessage; onDismiss: () => void }) {
+  const success = message.kind === "success";
+  return (
+    <div
+      className="rounded-lg px-4 py-3 flex items-start justify-between gap-3 text-[13px]"
+      style={{
+        background: success ? "var(--bg-success)" : "var(--bg-danger)",
+        color: success ? "var(--text-success)" : "var(--text-danger)",
+      }}
+    >
+      <div className="flex flex-col gap-1 min-w-0">
+        <span className="break-words">{message.text}</span>
+        {message.link && (
+          <a href={message.link} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+            {message.linkLabel ?? message.link} &rarr;
+          </a>
+        )}
+      </div>
+      <button
+        aria-label="Dismiss"
+        onClick={onDismiss}
+        style={{ border: "none", background: "transparent", padding: 0, color: "inherit" }}
+      >
+        <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-7 animate-pulse">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[72px] rounded-lg" style={{ background: "var(--surface-1)" }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-[220px] rounded-xl" style={{ background: "var(--surface-1)" }} />
+        ))}
+      </div>
     </div>
   );
 }

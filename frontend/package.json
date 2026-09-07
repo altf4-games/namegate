@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run test/format.test.ts",
+    "test": "vitest run test/format.test.ts test/status.test.ts",
     "test:live": "vitest run test/live",
     "typecheck": "tsc -b --noEmit"
   },

@@ -28,6 +28,10 @@
   --text-pro: #3c3489;
   --fill-pro: #7f77dd;
 
+  --bg-warning: #faeeda;
+  --text-warning: #633806;
+  --fill-warning: #ba7517;
+
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -57,6 +61,10 @@
     --bg-pro: #26215c;
     --text-pro: #cecbf6;
     --fill-pro: #7f77dd;
+
+    --bg-warning: #412402;
+    --text-warning: #fac775;
+    --fill-warning: #ba7517;
   }
 }
 
