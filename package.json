@@ -36,7 +36,12 @@
     "hedera:distribute": "node --env-file=.env --import tsx hedera/scripts/14-distribute-coupon.ts",
     "test:live": "node --env-file=.env --import tsx --test ens/test/live/beaconLive.test.ts",
     "test:live:hedera": "node --env-file=.env --import tsx --test hedera/test/live/mirrorLive.test.ts",
-    "test:live:coupon": "node --env-file=.env --import tsx --test hedera/test/live/couponLive.test.ts"
+    "test:live:coupon": "node --env-file=.env --import tsx --test hedera/test/live/couponLive.test.ts",
+    "frontend:install": "npm --prefix frontend install",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:test": "npm --prefix frontend test",
+    "frontend:test:live": "npm --prefix frontend run test:live"
   },
   "dependencies": {
     "viem": "^2.56.3"
