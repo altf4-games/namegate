@@ -18,7 +18,14 @@ root.render(
           appearance: { theme: "light" },
           defaultChain: sepolia,
           supportedChains: [sepolia, hederaTestnet],
-          embeddedWallets: { createOnLogin: "users-without-wallets" },
+          // The dashboard has embedded wallets set to
+          // user-controlled-server-wallets-only with create_on_login off
+          // (confirmed live against GET /v1/apps/:id) — asking the client
+          // SDK to auto-create one on login would fight that server-side
+          // setting. Investors connect their own external wallet instead,
+          // which also matches the pitch: bring your own wallet, call
+          // publish()/distribute() yourself.
+          embeddedWallets: { createOnLogin: "off" },
         }}
       >
         <App privyConfigured />
