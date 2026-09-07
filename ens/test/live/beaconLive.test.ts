@@ -122,11 +122,19 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
   });
 
   test("an expired name resolves to the zero address but still reports its expiry", async () => {
-    // investorc was registered with a short --expires-in-seconds expiry that
-    // has since passed. This is the ENSv2 expiry mechanism observed on real
-    // chain state, not a simulated clock: the registry refuses to resolve it,
-    // so the compliance record is structurally unreadable.
-    const record = await read("investorc");
+    // investorexpired was registered with a short --expires-in-seconds expiry
+    // that has since passed. This is the ENSv2 expiry mechanism observed on
+    // real chain state, not a simulated clock: the registry refuses to
+    // resolve it, so the compliance record is structurally unreadable.
+    //
+    // This used to be "investorc" — renamed after that label got claimed for
+    // real by the frontend's onboarding flow (a genuinely new, non-expired
+    // investor), which broke this test by making the fixture it depended on
+    // no longer expired. Re-registering the OLD label back to an expired
+    // state isn't possible once it's live and unexpired (the registry
+    // refuses to shorten an active expiry), so this fixture now has its own
+    // dedicated label that nothing else should ever claim.
+    const record = await read("investorexpired");
     const block = await publicClient.getBlock();
 
     assert.equal(record.resolver.toLowerCase(), ZERO);
@@ -135,7 +143,7 @@ describe("ENSComplianceBeacon, live on Sepolia", () => {
     assert.ok(record.nameExpiry > 0n, "an expired name should still report when it expired");
     assert.ok(
       record.nameExpiry <= block.timestamp,
-      "investorc is supposed to be expired by now",
+      "investorexpired is supposed to be expired by now",
     );
     // The owner is masked on expiry too, which is why the Hedera receiver has
     // to revoke by node rather than by the address in the payload.
