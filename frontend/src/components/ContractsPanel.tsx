@@ -56,28 +56,34 @@ export function ContractsPanel() {
             href={row.explorerUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-between gap-3 px-3 py-2.5 no-underline"
+            className="flex flex-col gap-1 px-3 py-2.5 no-underline"
             style={{
               color: "var(--text-primary)",
               background: "var(--surface-2)",
               borderTop: i === 0 ? "none" : "0.5px solid var(--border)",
             }}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-[13px] shrink-0">{row.name}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[13px]">{row.name}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <VerifiedBadge status={row.verified} />
+                <i
+                  className="ti ti-external-link"
+                  style={{ fontSize: 14, color: "var(--text-muted)" }}
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
               <span
-                className="text-[12px] truncate"
+                className="text-[12px]"
                 style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}
               >
                 {shortenAddress(row.address)}
               </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              <span className="text-[11px] shrink-0" style={{ color: "var(--text-muted)" }}>
                 {row.chain}
               </span>
-              <VerifiedBadge status={row.verified} />
-              <i className="ti ti-external-link" style={{ fontSize: 14, color: "var(--text-muted)" }} aria-hidden="true" />
             </div>
           </a>
         ))}
