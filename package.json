@@ -43,7 +43,8 @@
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "frontend:test": "npm --prefix frontend test",
-    "frontend:test:live": "npm --prefix frontend run test:live"
+    "frontend:test:live": "npm --prefix frontend run test:live",
+    "frontend:test:live:onboard": "node --env-file=.env -e \"require('child_process').execSync('npm run test:live:onboard', {cwd:'frontend', stdio:'inherit', env:process.env})\""
   },
   "dependencies": {
     "viem": "^2.56.3"

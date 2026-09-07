@@ -27,6 +27,9 @@ export const env = {
   investorBLabel: requireEnv("VITE_INVESTOR_B_LABEL"),
   investorBAddress: requireEnv("VITE_INVESTOR_B_ADDRESS") as `0x${string}`,
 
+  issuerResolverAddress: requireEnv("VITE_ISSUER_RESOLVER_ADDRESS") as `0x${string}`,
+  issuerUserRegistryAddress: requireEnv("VITE_ISSUER_USER_REGISTRY_ADDRESS") as `0x${string}`,
+
   // Empty, not missing, is tolerated here: wallet connect and the Privy
   // policy control are meant to degrade to "not configured yet" rather
   // than blocking the whole read-only dashboard from rendering.

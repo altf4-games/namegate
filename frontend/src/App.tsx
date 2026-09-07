@@ -3,35 +3,27 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { NavBarConnected, NavBarUnconfigured } from "./components/NavBar";
 import { BondTerms } from "./components/BondTerms";
 import { InvestorCard } from "./components/InvestorCard";
-import {
-  readInvestor,
-  readBondTerms,
-  type InvestorView,
-  type BondTerms as BondTermsData,
-} from "./lib/read";
+import { OnboardInvestor } from "./components/OnboardInvestor";
+import { readInvestor, readBondTerms, type InvestorView, type BondTerms as BondTermsData } from "./lib/read";
 import { publishCompliance, distributeCoupon, type MinimalEip1193Provider } from "./lib/actions";
-import { env } from "./lib/env";
+import { loadInvestors, saveOnboardedInvestor, type InvestorEntry } from "./lib/investors";
 
 type ActionMessage = { kind: "success" | "error"; text: string; link?: string; linkLabel?: string };
 
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; bond: BondTermsData; investorA: InvestorView; investorB: InvestorView };
+  | { status: "ready"; bond: BondTermsData; investors: InvestorView[] };
 
-function useDashboardData(refreshKey: number) {
+function useDashboardData(entries: InvestorEntry[], refreshKey: number) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    Promise.all([
-      readBondTerms(),
-      readInvestor(env.investorALabel, env.investorAAddress),
-      readInvestor(env.investorBLabel, env.investorBAddress),
-    ])
-      .then(([bond, investorA, investorB]) => {
-        if (!cancelled) setState({ status: "ready", bond, investorA, investorB });
+    Promise.all([readBondTerms(), ...entries.map((e) => readInvestor(e.label, e.address))])
+      .then(([bond, ...investors]) => {
+        if (!cancelled) setState({ status: "ready", bond, investors });
       })
       .catch((error: Error) => {
         if (!cancelled) setState({ status: "error", message: error.message });
@@ -39,7 +31,11 @@ function useDashboardData(refreshKey: number) {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+    // entries' identity changes each render (new array from loadInvestors());
+    // compare by its labels instead, so onboarding one new investor doesn't
+    // refetch investors that haven't changed on top of the ones that did.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries.map((e) => e.label).join(","), refreshKey]);
 
   return state;
 }
@@ -52,12 +48,17 @@ type WalletAccess = {
 };
 
 function Dashboard({ wallet }: { wallet: WalletAccess }) {
+  const [entries, setEntries] = useState<InvestorEntry[]>(() => loadInvestors());
   const [refreshKey, setRefreshKey] = useState(0);
-  const state = useDashboardData(refreshKey);
+  const state = useDashboardData(entries, refreshKey);
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
+
+  function handleOnboarded(label: string, address: `0x${string}`) {
+    setEntries(saveOnboardedInvestor({ label, address }));
+  }
 
   async function handlePublish(label: string) {
     if (!wallet.connected) {
@@ -113,12 +114,12 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
 
       <div className="px-1">
         <p className="text-[26px] sm:text-[34px] font-medium leading-tight m-0 mb-2.5 tracking-tight">
-          investora.namegate.eth
+          ENS names, not a database,
           <br />
-          is cleared to receive.
+          decide who gets paid.
         </p>
         <p className="text-[15px] m-0" style={{ color: "var(--text-secondary)" }}>
-          investorb.namegate.eth isn't — the record says why, live.
+          Every investor below reads straight from Sepolia and Hedera testnet, live.
         </p>
       </div>
 
@@ -139,12 +140,12 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-[13px] m-0" style={{ color: "var(--text-secondary)" }}>
-                Investors
+                Investors ({state.investors.length})
               </p>
               <button onClick={refresh}>Refresh</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[state.investorA, state.investorB].map((investor) => (
+              {state.investors.map((investor) => (
                 <div className="flex flex-col gap-2" key={investor.label}>
                   <InvestorCard
                     investor={investor}
@@ -166,6 +167,13 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
               ))}
             </div>
           </div>
+
+          <OnboardInvestor
+            connected={wallet.connected}
+            connect={wallet.connect}
+            getProvider={wallet.getProvider}
+            onOnboarded={handleOnboarded}
+          />
 
           {actionMessage && (
             <ActionBanner message={actionMessage} onDismiss={() => setActionMessage(null)} />
