@@ -23,7 +23,7 @@ import { assertUsableLabel } from "../../../ens/src/label.js";
 import { userRegistryAbi, permissionedResolverAbi, INVESTOR_ROLE_BITMAP } from "../../../ens/src/abi.js";
 import { PARENT_NAME, COMPLIANCE_KEYS } from "../../../ens/src/constants.js";
 import { dateToUnixSeconds, assertContractParseableDate } from "../../../ens/src/compliance.js";
-import type { MinimalEip1193Provider } from "./actions";
+import { ensureChain, type MinimalEip1193Provider } from "./actions";
 
 export type OnboardInput = {
   label: string;
@@ -51,6 +51,7 @@ export async function registerInvestor(
     throw new Error(`${input.accreditationExpiry} is not in the future — the registry rejects a past expiry.`);
   }
 
+  await ensureChain(provider, sepolia.id);
   const walletClient = walletClientFor(provider, sepolia);
   const { request } = await sepoliaClient.simulateContract({
     address: env.issuerUserRegistryAddress,
@@ -96,6 +97,7 @@ export async function setComplianceRecords(
     encodeFunctionData({ abi: permissionedResolverAbi, functionName: "setText", args: [node, key, value] }),
   );
 
+  await ensureChain(provider, sepolia.id);
   const walletClient = walletClientFor(provider, sepolia);
   const { request } = await sepoliaClient.simulateContract({
     address: env.issuerResolverAddress,
@@ -127,6 +129,7 @@ export async function issueTokens(
   })) as number;
   const value = BigInt(wholeUnits) * 10n ** BigInt(decimals);
 
+  await ensureChain(provider, hederaTestnet.id);
   const walletClient = walletClientFor(provider, hederaTestnet);
   const { request } = await hederaClient.simulateContract({
     address: addresses.bond,

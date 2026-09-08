@@ -25,7 +25,7 @@ const FEE_BUFFER_BPS = 2000n; // 20% over the quote, matching ens/scripts/11-bea
  * Hedera transaction while the wallet is still pointed at Sepolia fails
  * with a confusing "wrong chain" error deep in the RPC response otherwise.
  */
-async function ensureChain(provider: MinimalEip1193Provider, chainId: number) {
+export async function ensureChain(provider: MinimalEip1193Provider, chainId: number) {
   const currentHex = (await provider.request({ method: "eth_chainId" })) as string;
   if (parseInt(currentHex, 16) === chainId) return;
 
