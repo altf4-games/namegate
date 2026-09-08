@@ -149,6 +149,23 @@ export const externalControlListManagementAbi = [
     inputs: [],
     outputs: [{ name: "externalControlListsCount_", type: "uint256" }],
   },
+  // Confirmed against ats-v3.1.0-ats source
+  // (layer_1/interfaces/externalControlLists/IExternalControlListManagement.sol)
+  // — paginated, not a single flat getter. Used live to find a real bug: a
+  // previous mirror deployment left registered as a second control list
+  // after a redeploy, which silently blocked issue()/transfer for everyone
+  // because every registered list must authorize an account — see
+  // hedera/test/live/bondControlListLive.test.ts.
+  {
+    type: "function",
+    name: "getExternalControlListsMembers",
+    stateMutability: "view",
+    inputs: [
+      { name: "_pageIndex", type: "uint256" },
+      { name: "_pageLength", type: "uint256" },
+    ],
+    outputs: [{ name: "members_", type: "address[]" }],
+  },
 ] as const;
 
 // Confirmed against ats-v3.1.0-ats source directly — the docs this project
