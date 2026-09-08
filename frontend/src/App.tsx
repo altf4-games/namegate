@@ -14,17 +14,23 @@ type ActionMessage = { kind: "success" | "error"; text: string; link?: string; l
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; bond: BondTermsData; investors: InvestorView[] };
+  | { status: "ready"; bond: BondTermsData; investors: InvestorView[]; refreshing: boolean };
 
 function useDashboardData(entries: InvestorEntry[], refreshKey: number) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: "loading" });
+    // A background refresh (onboarding an investor, clicking Refresh, a
+    // publish/distribute completing) must NOT drop back to the full-page
+    // "loading" skeleton — that unmounts everything currently on screen,
+    // including whatever step of the onboarding form the user is mid-way
+    // through, wiping its progress. Only the very first load has no prior
+    // ready state to keep showing, so only it uses the skeleton.
+    setState((prev) => (prev.status === "ready" ? { ...prev, refreshing: true } : { status: "loading" }));
     Promise.all([readBondTerms(), ...entries.map((e) => readInvestor(e.label, e.address))])
       .then(([bond, ...investors]) => {
-        if (!cancelled) setState({ status: "ready", bond, investors });
+        if (!cancelled) setState({ status: "ready", bond, investors, refreshing: false });
       })
       .catch((error: Error) => {
         if (!cancelled) setState({ status: "error", message: error.message });
@@ -142,8 +148,13 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
             <div className="flex justify-between items-center mb-2">
               <p className="text-[13px] m-0" style={{ color: "var(--text-secondary)" }}>
                 Investors ({state.investors.length})
+                {state.refreshing && (
+                  <span style={{ color: "var(--text-muted)" }}> — refreshing...</span>
+                )}
               </p>
-              <button onClick={refresh}>Refresh</button>
+              <button onClick={refresh} disabled={state.refreshing}>
+                Refresh
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {state.investors.map((investor) => (
