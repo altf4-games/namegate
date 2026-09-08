@@ -185,6 +185,7 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
             connect={wallet.connect}
             getProvider={wallet.getProvider}
             onOnboarded={handleOnboarded}
+            onIssued={refresh}
           />
 
           <ContractsPanel />

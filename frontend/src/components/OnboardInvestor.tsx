@@ -21,6 +21,10 @@ type Props = {
   connect: () => void;
   getProvider: () => Promise<{ provider: MinimalEip1193Provider; account: `0x${string}` }>;
   onOnboarded: (label: string, address: `0x${string}`) => void;
+  /** Called once tokens are actually issued — the investor card was already
+   * showing since step 1, but its balance and coupon entitlement are only
+   * correct as of a fresh read, which nothing else triggers on its own. */
+  onIssued: () => void;
 };
 
 function inOneYear(): string {
@@ -50,7 +54,7 @@ function sanitizeLoadedSteps(steps: Record<StepKey, StepState>): Record<StepKey,
   return result;
 }
 
-export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }: Props) {
+export function OnboardInvestor({ connected, connect, getProvider, onOnboarded, onIssued }: Props) {
   const [draftLoaded] = useState<OnboardDraft | null>(() => loadOnboardDraft());
 
   const [open, setOpen] = useState(() => draftLoaded !== null);
@@ -201,7 +205,8 @@ export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }
       return;
     }
     const { provider, account } = await getProvider();
-    await runStep("issue", () => issueTokens(provider, account, address as `0x${string}`, units));
+    const ok = await runStep("issue", () => issueTokens(provider, account, address as `0x${string}`, units));
+    if (ok) onIssued();
   }
 
   const RUNNERS: Record<StepKey, () => void> = {
