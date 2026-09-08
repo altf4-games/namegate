@@ -4,6 +4,7 @@ import type { MinimalEip1193Provider } from "../lib/actions";
 import { publishCompliance } from "../lib/actions";
 import { registerInvestor, setComplianceRecords, issueTokens } from "../lib/onboard";
 import { readMirrorAuthorized } from "../lib/read";
+import { loadOnboardDraft, saveOnboardDraft, clearOnboardDraft, type OnboardDraft } from "../lib/onboardDraft";
 
 type StepKey = "register" | "compliance" | "publish" | "issue";
 type StepState = { status: "idle" | "busy" | "done" | "error"; detail?: string };
@@ -28,24 +29,62 @@ function inOneYear(): string {
   return d.toISOString().slice(0, 10);
 }
 
+const IDLE_STEPS: Record<StepKey, StepState> = {
+  register: { status: "idle" },
+  compliance: { status: "idle" },
+  publish: { status: "idle" },
+  issue: { status: "idle" },
+};
+
+// A step reload finds "busy" in can't be trusted — the underlying
+// transaction might have gone through, might have failed, might still be
+// pending, and there's no way to tell from here. Downgrading it to "idle"
+// means the user just sees a normal "Run" button and can safely retry
+// (register/publish/issue all simulate before sending, so a genuine
+// duplicate gets caught before spending gas, not after).
+function sanitizeLoadedSteps(steps: Record<StepKey, StepState>): Record<StepKey, StepState> {
+  const result = { ...steps };
+  for (const key of Object.keys(result) as StepKey[]) {
+    if (result[key].status === "busy") result[key] = { status: "idle" };
+  }
+  return result;
+}
+
 export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }: Props) {
-  const [open, setOpen] = useState(false);
-  const [label, setLabel] = useState("");
-  const [address, setAddress] = useState("");
-  const [jurisdiction, setJurisdiction] = useState("US");
-  const [accreditationExpiry, setAccreditationExpiry] = useState("");
-  const [lockupUntil, setLockupUntil] = useState("");
-  const [wholeUnits, setWholeUnits] = useState("100");
+  const [draftLoaded] = useState<OnboardDraft | null>(() => loadOnboardDraft());
+
+  const [open, setOpen] = useState(() => draftLoaded !== null);
+  const [label, setLabel] = useState(() => draftLoaded?.label ?? "");
+  const [address, setAddress] = useState(() => draftLoaded?.address ?? "");
+  const [jurisdiction, setJurisdiction] = useState(() => draftLoaded?.jurisdiction ?? "US");
+  const [accreditationExpiry, setAccreditationExpiry] = useState(() => draftLoaded?.accreditationExpiry ?? "");
+  const [lockupUntil, setLockupUntil] = useState(() => draftLoaded?.lockupUntil ?? "");
+  const [wholeUnits, setWholeUnits] = useState(() => draftLoaded?.wholeUnits ?? "100");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const [steps, setSteps] = useState<Record<StepKey, StepState>>({
-    register: { status: "idle" },
-    compliance: { status: "idle" },
-    publish: { status: "idle" },
-    issue: { status: "idle" },
-  });
+  const [steps, setSteps] = useState<Record<StepKey, StepState>>(() =>
+    draftLoaded ? sanitizeLoadedSteps(draftLoaded.steps) : IDLE_STEPS,
+  );
 
   const started = Object.values(steps).some((s) => s.status !== "idle");
+
+  // Persists the whole in-progress form — fields and step statuses — so a
+  // reload or a closed tab (CCIP delivery between step 3 and step 4 can
+  // take a long time; nobody should have to babysit a browser tab for that)
+  // picks up right where it left off instead of losing everything.
+  useEffect(() => {
+    if (!started && !label && !address) {
+      clearOnboardDraft();
+      return;
+    }
+    saveOnboardDraft({ label, address, jurisdiction, accreditationExpiry, lockupUntil, wholeUnits, steps });
+  }, [label, address, jurisdiction, accreditationExpiry, lockupUntil, wholeUnits, steps, started]);
+
+  // Once issued, the investor is already saved in the persistent roster —
+  // nothing left for the draft to resume, so stop carrying it forward.
+  useEffect(() => {
+    if (steps.issue.status === "done") clearOnboardDraft();
+  }, [steps.issue.status]);
 
   // A publish() transaction confirming on Sepolia only proves the CCIP
   // router accepted it — delivery to Hedera takes minutes, and issue()
