@@ -7,6 +7,24 @@ import { PARENT_NAME } from "../../../ens/src/constants.js";
 
 export type { ComplianceRecord };
 
+/**
+ * Whether the Hedera mirror currently authorizes this address — the one
+ * check that actually matters before issuing tokens to it. A publish()
+ * transaction confirming on Sepolia only proves the CCIP router accepted
+ * the message; delivery to Hedera takes minutes, and issue() genuinely
+ * reverts with AccountIsBlocked until it lands. Polling this, rather than
+ * gating on the Sepolia tx alone, is what the onboarding form's step 4
+ * actually waits on.
+ */
+export async function readMirrorAuthorized(address: `0x${string}`): Promise<boolean> {
+  return hederaClient.readContract({
+    address: addresses.mirror,
+    abi: mirrorAbi,
+    functionName: "isAuthorized",
+    args: [address],
+  }) as Promise<boolean>;
+}
+
 export type InvestorView = {
   label: string;
   address: `0x${string}`;

@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { isAddress } from "viem";
+import { useEffect, useState } from "react";
+import { isAddress, getAddress } from "viem";
 import type { MinimalEip1193Provider } from "../lib/actions";
 import { publishCompliance } from "../lib/actions";
 import { registerInvestor, setComplianceRecords, issueTokens } from "../lib/onboard";
+import { readMirrorAuthorized } from "../lib/read";
 
 type StepKey = "register" | "compliance" | "publish" | "issue";
 type StepState = { status: "idle" | "busy" | "done" | "error"; detail?: string };
@@ -46,10 +47,44 @@ export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }
 
   const started = Object.values(steps).some((s) => s.status !== "idle");
 
+  // A publish() transaction confirming on Sepolia only proves the CCIP
+  // router accepted it — delivery to Hedera takes minutes, and issue()
+  // genuinely reverts with AccountIsBlocked until it lands. This polls the
+  // real Hedera state so step 4 is only ever offered once it would actually
+  // succeed, instead of a button that looks ready but silently isn't.
+  const [mirrorAuthorized, setMirrorAuthorized] = useState(false);
+  useEffect(() => {
+    if (steps.publish.status !== "done" || mirrorAuthorized) return;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const authorized = await readMirrorAuthorized(address as `0x${string}`);
+        if (!cancelled && authorized) setMirrorAuthorized(true);
+      } catch {
+        // Transient RPC hiccup — the next poll tries again.
+      }
+    };
+    check();
+    const interval = setInterval(check, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [steps.publish.status, address, mirrorAuthorized]);
+
   function fillDemoValues() {
     const suffix = Math.floor(Math.random() * 9000 + 1000);
+    // A genuinely fresh random address each time — reusing a fixed one
+    // (this used to always be the burn address) means a second onboarding
+    // run can land on an address the mirror already authorized from a
+    // PREVIOUS run, silently skipping the real CCIP wait rather than
+    // proving it.
+    const randomBytes = crypto.getRandomValues(new Uint8Array(20));
+    const randomAddress = getAddress(
+      `0x${Array.from(randomBytes, (b) => b.toString(16).padStart(2, "0")).join("")}`,
+    );
     setLabel(`investor${suffix}`);
-    setAddress("0x000000000000000000000000000000000000dEaD");
+    setAddress(randomAddress);
     setJurisdiction("US");
     setAccreditationExpiry(inOneYear());
     setLockupUntil("");
@@ -140,7 +175,7 @@ export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }
     register: false,
     compliance: steps.register.status !== "done",
     publish: steps.compliance.status !== "done",
-    issue: steps.publish.status !== "done",
+    issue: steps.publish.status !== "done" || !mirrorAuthorized,
   };
 
   if (!open) {
@@ -242,6 +277,14 @@ export function OnboardInvestor({ connected, connect, getProvider, onOnboarded }
           />
         ))}
       </div>
+
+      {steps.publish.status === "done" && !mirrorAuthorized && (
+        <p className="text-[12px] m-0 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+          <i className="ti ti-loader-2" style={{ fontSize: 13 }} aria-hidden="true" />
+          Waiting for CCIP delivery to Hedera before issuing is possible — this takes a few minutes, sometimes
+          longer. Checking automatically every 10s.
+        </p>
+      )}
 
       {steps.issue.status === "done" && (
         <p className="text-[13px] m-0" style={{ color: "var(--text-success)" }}>
