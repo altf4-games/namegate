@@ -41,6 +41,7 @@
     "test:live:hedera": "node --env-file=.env --import tsx --test hedera/test/live/mirrorLive.test.ts hedera/test/live/bondControlListLive.test.ts",
     "test:live:coupon": "node --env-file=.env --import tsx --test hedera/test/live/couponLive.test.ts",
     "privy:create-org-wallet": "node --env-file=.env --import tsx privy/scripts/01-create-org-wallet.ts",
+    "privy:create-quorum-wallet": "node --env-file=.env --import tsx privy/scripts/02-create-quorum-wallet.ts",
     "test:live:privy": "node --env-file=.env --import tsx --test privy/test/live/orgWallet.live.test.ts",
     "frontend:install": "npm --prefix frontend install",
     "frontend:dev": "npm --prefix frontend run dev",
@@ -50,6 +51,7 @@
     "frontend:test:live:onboard": "node --env-file=.env -e \"require('child_process').execSync('npm run test:live:onboard', {cwd:'frontend', stdio:'inherit', env:process.env})\""
   },
   "dependencies": {
+    "canonicalize": "^4.0.0",
     "viem": "^2.56.3"
   },
   "devDependencies": {
