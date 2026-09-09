@@ -11,12 +11,14 @@
 import beaconArtifact from "../../../artifacts/contracts/sepolia/ENSComplianceBeacon.sol/ENSComplianceBeacon.json";
 import mirrorArtifact from "../../../artifacts/contracts/hedera/ENSComplianceMirror.sol/ENSComplianceMirror.json";
 import distributorArtifact from "../../../artifacts/contracts/hedera/CouponDistributor.sol/CouponDistributor.json";
+import pauseSwitchArtifact from "../../../artifacts/contracts/hedera/IssuerPauseSwitch.sol/IssuerPauseSwitch.json";
 import { bondErc20Abi, bondCouponAbi } from "../../../hedera/src/abi.js";
 import { env } from "./env";
 
 export const beaconAbi = beaconArtifact.abi;
 export const mirrorAbi = mirrorArtifact.abi;
 export const distributorAbi = distributorArtifact.abi;
+export const pauseSwitchAbi = pauseSwitchArtifact.abi;
 export const bondAbi = [...bondErc20Abi, ...bondCouponAbi] as const;
 
 export const addresses = {
@@ -24,4 +26,5 @@ export const addresses = {
   mirror: env.mirrorAddress,
   bond: env.bondAddress,
   distributor: env.distributorAddress,
+  pauseSwitch: env.pauseSwitchAddress,
 } as const;

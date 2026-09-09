@@ -168,6 +168,82 @@ export const externalControlListManagementAbi = [
   },
 ] as const;
 
+// Confirmed against real ATS source
+// (facets/externalPauseManagement/IExternalPauseManagement.sol). Composition
+// is OR, not AND — the token is paused if its own flag is set OR ANY listed
+// external pause returns true — the opposite of external control lists'
+// AND composition above. Getting that backwards would either do nothing or
+// silently block every account, so IssuerPauseSwitch.sol is written to be a
+// single, independent, additive pause source and nothing else.
+export const externalPauseManagementAbi = [
+  {
+    type: "function",
+    name: "addExternalPause",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_pause", type: "address" }],
+    outputs: [{ name: "success_", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "removeExternalPause",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_pause", type: "address" }],
+    outputs: [{ name: "success_", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "isExternalPause",
+    stateMutability: "view",
+    inputs: [{ name: "_pause", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getExternalPausesCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "externalPausesCount_", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getExternalPausesMembers",
+    stateMutability: "view",
+    inputs: [
+      { name: "_pageIndex", type: "uint256" },
+      { name: "_pageLength", type: "uint256" },
+    ],
+    outputs: [{ name: "members_", type: "address[]" }],
+  },
+] as const;
+
+// Confirmed against real ATS source
+// (facets/accessControl/IAccessControl.sol). grantRole/revokeRole require the
+// CALLER to hold the admin role of `_role` (resolved dynamically via
+// getRoleAdmin) — DEFAULT_ADMIN_ROLE is the default admin-of-every-role in
+// ATS's AccessControl facet, confirmed live against the deployed bond.
+export const accessControlAbi = [
+  {
+    type: "function",
+    name: "grantRole",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_role", type: "bytes32" },
+      { name: "_account", type: "address" },
+    ],
+    outputs: [{ name: "success_", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "hasRole",
+    stateMutability: "view",
+    inputs: [
+      { name: "_role", type: "bytes32" },
+      { name: "_account", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
 // Confirmed against ats-v3.1.0-ats source directly — the docs this project
 // started from (initializeCoupon/cancelCoupon/forceCancelCoupon) describe a
 // DIFFERENT ATS version. v3.1.0-ats's coupon surface lives on IBond/IBondRead

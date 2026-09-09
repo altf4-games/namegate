@@ -32,6 +32,13 @@ const ROWS: ContractRow[] = [
     verified: true,
   },
   {
+    name: "Pause switch",
+    address: addresses.pauseSwitch,
+    chain: "Hedera testnet",
+    explorerUrl: `https://hashscan.io/testnet/contract/${addresses.pauseSwitch}`,
+    verified: true,
+  },
+  {
     name: "Bond (ATS)",
     address: addresses.bond,
     chain: "Hedera testnet",

@@ -77,6 +77,21 @@ export const ATS_ROLES = {
     "0x8a139eeb747b9809192ae3de1b88acfd2568c15241a5c4f85db0443a536d77d6",
   ROLE_ISSUER:
     "0x4be32e8849414d19186807008dabd451c1d87dae5f8e22f32f5ce94d486da842",
+  // Gates addExternalPause / removeExternalPause. NOT the value in ATS's
+  // current `main` branch source (contracts/constants/roles.sol,
+  // 0x03e7c99...) — that reverted live with AccountHasNoRole. The deployed
+  // bond's real value, confirmed via the ATS repo's own README role table
+  // (packages/ats/contracts/README.md, `_PAUSE_MANAGER_ROLE`) and
+  // cross-checked against ROLE_CONTROL_LIST_MANAGER above, whose value
+  // matches exactly between that README and this project's own live-tested
+  // constant — the same deploy/source version-skew this project has hit
+  // before (see hedera/src/abi.ts's header comment on the coupon struct
+  // shape). Unlike ROLE_CONTROL_LIST_MANAGER, this was never granted at
+  // deploy time, so it has to be granted post-deploy via grantRole (the
+  // issuer holds DEFAULT_ADMIN_ROLE, confirmed live, which is the
+  // admin-of-every-role default in ATS's AccessControl facet).
+  ROLE_PAUSE_MANAGER:
+    "0xbc36fbd776e95c4811506a63b650c876b4159cb152d827a5f717968b67c69b84",
 } as const;
 
 export const RegulationType = { NONE: 0, REG_S: 1, REG_D: 2 } as const;
