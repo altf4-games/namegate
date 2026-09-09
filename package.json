@@ -19,6 +19,7 @@
     "ens:deploy-beacon": "node --env-file=.env --import tsx ens/scripts/09-deploy-beacon.ts",
     "ens:beacon-read": "node --env-file=.env --import tsx ens/scripts/10-beacon-read.ts",
     "ens:beacon-publish": "node --env-file=.env --import tsx ens/scripts/11-beacon-publish.ts",
+    "ens:demo-vanilla-read": "node --env-file=.env --import tsx ens/scripts/12-demo-vanilla-read.ts",
     "compile": "hardhat compile",
     "hedera:deploy-control-list": "node --env-file=.env --import tsx hedera/scripts/01-deploy-control-list.ts",
     "hedera:deploy-bond": "node --env-file=.env --import tsx hedera/scripts/02-deploy-bond.ts",
