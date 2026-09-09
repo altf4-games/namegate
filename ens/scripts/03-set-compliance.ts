@@ -115,10 +115,10 @@ async function main() {
   console.log(`Done. tx ${hash} (block ${receipt.blockNumber})`);
 
   console.log(
-    "\nTo scope future writes of compliance.kyc to a KYC-provider address " +
+    "\nTo scope future writes of a compliance field to its own address " +
       "(on-brief for the ENS track), run:\n",
   );
-  console.log(`  npm run ens:authorize-kyc-provider -- ${label} <kycProviderAddress>`);
+  console.log(`  npm run ens:authorize-compliance-role -- ${label} kyc <kycProviderAddress>`);
   console.log(`  (toName, DNS-encoded, would be ${dnsEncodeName(fullName)})`);
 }
 

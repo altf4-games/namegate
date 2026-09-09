@@ -13,7 +13,7 @@
     "ens:register-investor": "node --env-file=.env --import tsx ens/scripts/02-register-investor.ts",
     "ens:set-compliance": "node --env-file=.env --import tsx ens/scripts/03-set-compliance.ts",
     "ens:read": "node --env-file=.env --import tsx ens/scripts/04-read-compliance.ts",
-    "ens:authorize-kyc-provider": "node --env-file=.env --import tsx ens/scripts/05-authorize-kyc-provider.ts",
+    "ens:authorize-compliance-role": "node --env-file=.env --import tsx ens/scripts/05-authorize-compliance-role.ts",
     "ens:check-transfer-role": "node --env-file=.env --import tsx ens/scripts/07-check-transfer-role.ts",
     "ens:verify-ccip": "node --env-file=.env --import tsx ens/scripts/08-verify-ccip-lane.ts",
     "ens:deploy-beacon": "node --env-file=.env --import tsx ens/scripts/09-deploy-beacon.ts",
