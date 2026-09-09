@@ -40,3 +40,14 @@ export const COMPLIANCE_KEYS = {
 
 // setText(bytes32,string,string) selector — byte-identical to ENSv1.
 export const SET_TEXT_SELECTOR = "0x10f13a8c" as const;
+
+// PermissionedResolver's EnhancedAccessControl role bits (confirmed against
+// real source: contracts-v2/src/resolver/libraries/PermissionedResolverLib.sol).
+// ROLE_SET_TEXT is the base "can call setText" bit; ROLE_SET_TEXT_ADMIN
+// (that same bit shifted left 128) is the separate "can grant/revoke
+// ROLE_SET_TEXT" bit — revoking the base bit from an account does not touch
+// the admin bit, so an admin can lock its own write access to a key while
+// keeping the power to re-authorize it later.
+export const RESOLVER_ROLES = {
+  SET_TEXT: 1n << 4n,
+} as const;

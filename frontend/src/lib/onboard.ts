@@ -21,8 +21,9 @@ import { addresses, bondAbi } from "./contracts";
 import { env } from "./env";
 import { assertUsableLabel } from "../../../ens/src/label.js";
 import { userRegistryAbi, permissionedResolverAbi, INVESTOR_ROLE_BITMAP } from "../../../ens/src/abi.js";
-import { PARENT_NAME, COMPLIANCE_KEYS } from "../../../ens/src/constants.js";
+import { PARENT_NAME, COMPLIANCE_KEYS, RESOLVER_ROLES } from "../../../ens/src/constants.js";
 import { dateToUnixSeconds, assertContractParseableDate } from "../../../ens/src/compliance.js";
+import { dnsEncodeName } from "../../../ens/src/dnsEncode.js";
 import { ensureChain, type MinimalEip1193Provider } from "./actions";
 
 export type OnboardInput = {
@@ -70,6 +71,23 @@ export async function registerInvestor(
   const txHash = await walletClient.writeContract(request);
   const receipt = await sepoliaClient.waitForTransactionReceipt({ hash: txHash });
   if (receipt.status !== "success") throw new Error(`register() reverted. Status: ${receipt.status}`);
+
+  // The issuer's compliance.* write access is granted per-investor, not
+  // globally (see ens/scripts/14-migrate-issuer-to-per-name-roles.ts) — a
+  // brand-new investor has no writer authorized yet, so step 2 would revert
+  // without this.
+  const { request: roleRequest } = await sepoliaClient.simulateContract({
+    address: env.issuerResolverAddress,
+    abi: permissionedResolverAbi,
+    functionName: "authorizeNameRoles",
+    args: [dnsEncodeName(`${input.label}.${PARENT_NAME}`), RESOLVER_ROLES.SET_TEXT, account, true],
+    account,
+  });
+  const roleTxHash = await walletClient.writeContract(roleRequest);
+  const roleReceipt = await sepoliaClient.waitForTransactionReceipt({ hash: roleTxHash });
+  if (roleReceipt.status !== "success") {
+    throw new Error(`authorizeNameRoles() reverted. Status: ${roleReceipt.status}`);
+  }
   return { txHash };
 }
 

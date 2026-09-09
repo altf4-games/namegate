@@ -24,10 +24,11 @@
 //   npm run ens:register-investor -- investorc 0xAddr --expires-in-seconds 90
 
 import { isAddress } from "viem";
-import { publicClient, getWalletClient } from "../src/client.js";
-import { userRegistryAbi, INVESTOR_ROLE_BITMAP } from "../src/abi.js";
-import { PARENT_NAME } from "../src/constants.js";
+import { publicClient, getWalletClient, getIssuerAccount } from "../src/client.js";
+import { userRegistryAbi, permissionedResolverAbi, INVESTOR_ROLE_BITMAP } from "../src/abi.js";
+import { PARENT_NAME, RESOLVER_ROLES } from "../src/constants.js";
 import { parseExpiryFlag, resolveExpiry } from "../src/compliance.js";
+import { dnsEncodeName } from "../src/dnsEncode.js";
 import { sepolia } from "viem/chains";
 import { confirmTransaction } from "../../shared/src/tx.js";
 import { assertUsableLabel } from "../src/label.js";
@@ -105,6 +106,21 @@ async function main() {
     );
   }
   console.log(`Verified: ${label} resolves to ${resolver}.`);
+
+  // The issuer's write access to compliance.* is granted per-investor, not
+  // globally (see 14-migrate-issuer-to-per-name-roles.ts for why) — without
+  // this, 03-set-compliance.ts would revert on a brand-new investor.
+  console.log(`Granting the issuer text-write access on ${label}.${PARENT_NAME}...`);
+  const issuerAccount = getIssuerAccount();
+  const roleHash = await walletClient.writeContract({
+    address: issuerResolverAddress,
+    abi: permissionedResolverAbi,
+    functionName: "authorizeNameRoles",
+    args: [dnsEncodeName(`${label}.${PARENT_NAME}`), RESOLVER_ROLES.SET_TEXT, issuerAccount.address, true],
+    chain: sepolia,
+    account: issuerAccount,
+  });
+  await confirmTransaction(publicClient, roleHash, "Granting issuer text-write access");
 }
 
 main().catch((err) => {

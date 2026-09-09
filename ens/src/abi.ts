@@ -164,6 +164,24 @@ export const permissionedResolverAbi = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  // EnhancedAccessControl's ROOT_RESOURCE (0x0) is a global fallback: any
+  // role granted there ORs into every resource's effective roles and cannot
+  // be scoped back down per-name (confirmed against contracts-v2's
+  // EnhancedAccessControl.sol — hasRoles = rootRoles | resourceRoles). The
+  // issuer's setup grant (01-setup-namespace.ts) is exactly this: ALL_ROLES
+  // at ROOT_RESOURCE. Revoking a bit here removes it everywhere at once,
+  // which is why per-investor locking requires backfilling explicit
+  // per-name grants (authorizeNameRoles) BEFORE calling this.
+  {
+    type: "function",
+    name: "revokeRootRoles",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "roleBitmap", type: "uint256" },
+      { name: "account", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
 ] as const;
 
 export const verifiableFactoryAbi = [
