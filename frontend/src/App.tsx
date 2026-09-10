@@ -196,7 +196,11 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
             onIssued={refresh}
           />
 
-          {wallet.connected && <ScheduledCoupon investors={state.investors} />}
+          <ScheduledCoupon
+            investors={state.investors}
+            connected={wallet.connected}
+            connect={wallet.connect}
+          />
 
           <ContractsPanel />
 

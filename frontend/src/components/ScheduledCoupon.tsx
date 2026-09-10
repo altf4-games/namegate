@@ -18,7 +18,15 @@ type Phase =
 
 const DELAY_SECONDS = 60;
 
-export function ScheduledCoupon({ investors }: { investors: InvestorView[] }) {
+export function ScheduledCoupon({
+  investors,
+  connected,
+  connect,
+}: {
+  investors: InvestorView[];
+  connected: boolean;
+  connect: () => void;
+}) {
   const [holder, setHolder] = useState<`0x${string}`>(investors[0]?.address ?? ("0x" as `0x${string}`));
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -98,15 +106,17 @@ export function ScheduledCoupon({ investors }: { investors: InvestorView[] }) {
             ))}
           </select>
           <button
-            onClick={schedule}
+            onClick={connected ? schedule : connect}
             disabled={phase.kind === "creating" || phase.kind === "waiting"}
             className="text-[13px]"
           >
-            {phase.kind === "creating"
-              ? "Scheduling..."
-              : phase.kind === "waiting"
-                ? "Waiting for execution..."
-                : `Schedule (+${DELAY_SECONDS}s)`}
+            {!connected
+              ? "Connect wallet to schedule"
+              : phase.kind === "creating"
+                ? "Scheduling..."
+                : phase.kind === "waiting"
+                  ? "Waiting for execution..."
+                  : `Schedule (+${DELAY_SECONDS}s)`}
           </button>
         </div>
 
