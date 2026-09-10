@@ -4,6 +4,7 @@ import {
   hederaStatus,
   isStale,
   lockupLabel,
+  blockReason,
   canDistribute,
   distributeButtonState,
 } from "../src/lib/status";
@@ -120,5 +121,30 @@ describe("distributeButtonState", () => {
 
   it("is ready only when every condition actually allows a real payout", () => {
     expect(distributeButtonState(makeInvestor(), false).kind).toBe("ready");
+  });
+});
+
+describe("blockReason", () => {
+  it("returns null for a fully compliant investor when the bond is not paused", () => {
+    expect(blockReason(makeInvestor(), false)).toBeNull();
+  });
+
+  it("reports the bond-wide pause first, even for a compliant investor", () => {
+    const reason = blockReason(makeInvestor(), true);
+    expect(reason).toMatch(/bond is paused/);
+  });
+
+  it("surfaces the ENS-side reason with the BLOCKED prefix and trailing period stripped", () => {
+    const investor = makeInvestor({
+      record: { ...makeInvestor().record, authorized: false },
+      description: "BLOCKED: KYC is verified, but the holding is locked up until 2027-01-15.",
+    });
+    expect(blockReason(investor, false)).toBe(
+      "KYC is verified, but the holding is locked up until 2027-01-15",
+    );
+  });
+
+  it("does not flag a pure forward-sync gap (ENS authorized, mirror lagging)", () => {
+    expect(blockReason(makeInvestor({ mirrorAuthorized: false }), false)).toBeNull();
   });
 });

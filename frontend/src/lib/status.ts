@@ -20,6 +20,27 @@ export function isStale(investor: InvestorView): boolean {
   return investor.record.authorized !== investor.mirrorAuthorized;
 }
 
+/**
+ * The one-line reason an investor is blocked for a real compliance cause, or
+ * null if nothing does. This is the "point at the record and show why" beat:
+ * the verdict still comes from the chain, this only names the cause.
+ *
+ * Scope is deliberate. A bond-wide pause overrides everything and is reported
+ * first. Otherwise it's whatever `describeRecord` worked out from the ENS
+ * record (expired, locked, not KYC'd, untrusted resolver), prefix stripped.
+ * A pure forward-sync gap — ENS clears the investor but the Hedera mirror
+ * hasn't caught up yet — is NOT reported here: it isn't a compliance block,
+ * the "stale" chip and the "Publish latest" button already say so, and a red
+ * "blocked" callout next to a green "authorized" badge just reads as a bug.
+ */
+export function blockReason(investor: InvestorView, bondPaused: boolean): string | null {
+  if (bondPaused) {
+    return "the bond is paused — every transfer and issuance is frozen bond-wide until the issuer lifts it";
+  }
+  if (investor.record.authorized) return null;
+  return investor.description.replace(/^BLOCKED:\s*/, "").replace(/\.$/, "");
+}
+
 export function lockupLabel(investor: InvestorView): string {
   return investor.record.lockupUntilTimestamp === 0n
     ? "Expired"

@@ -126,8 +126,13 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
           decide who gets paid.
         </p>
         <p className="text-[15px] m-0" style={{ color: "var(--text-secondary)" }}>
-          Every investor below reads straight from Sepolia and Hedera testnet, live.
+          A tokenized bond on Hedera whose compliance layer is ENSv2. Edit an investor&apos;s
+          name and their eligibility changes on-chain. Every card below reads straight from
+          Sepolia and Hedera testnet, live.
         </p>
+        {state.status === "ready" && (
+          <BondStatusBadge paused={state.bond.paused} />
+        )}
       </div>
 
       {state.status === "loading" && <DashboardSkeleton />}
@@ -161,6 +166,8 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
                 <div className="flex flex-col gap-2" key={investor.label}>
                   <InvestorCard
                     investor={investor}
+                    bondPaused={state.bond.paused}
+                    hbarUsdCents={state.bond.hbarUsdCents}
                     onDistribute={handleDistribute}
                     distributing={busyLabel === `distribute:${investor.label}`}
                   />
@@ -196,6 +203,25 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
         </>
       )}
     </div>
+  );
+}
+
+function BondStatusBadge({ paused }: { paused: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-md mt-3"
+      style={
+        paused
+          ? { background: "var(--bg-danger)", color: "var(--text-danger)" }
+          : { background: "var(--bg-success)", color: "var(--text-success)" }
+      }
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ background: paused ? "var(--fill-danger)" : "var(--fill-success)" }}
+      />
+      {paused ? "Bond paused — all transfers frozen" : "Bond active"}
+    </span>
   );
 }
 

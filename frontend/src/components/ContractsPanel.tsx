@@ -39,6 +39,13 @@ const ROWS: ContractRow[] = [
     verified: true,
   },
   {
+    name: "Price reader (Chainlink HBAR/USD)",
+    address: addresses.priceReader,
+    chain: "Hedera testnet",
+    explorerUrl: `https://hashscan.io/testnet/contract/${addresses.priceReader}`,
+    verified: true,
+  },
+  {
     name: "Bond (ATS)",
     address: addresses.bond,
     chain: "Hedera testnet",

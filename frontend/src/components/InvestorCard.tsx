@@ -1,24 +1,28 @@
 import type { InvestorView } from "../lib/read";
-import { shortenAddress, formatTinybarAsHbar } from "../lib/format";
+import { shortenAddress, formatTinybarAsHbar, formatTinybarAsUsd } from "../lib/format";
 import {
   ensStatus,
   hederaStatus,
   isStale,
   lockupLabel,
+  blockReason,
   distributeButtonState,
   type DistributeButtonState,
 } from "../lib/status";
 
 type Props = {
   investor: InvestorView;
+  bondPaused: boolean;
+  hbarUsdCents: bigint;
   onDistribute: (investor: InvestorView) => void;
   distributing: boolean;
 };
 
-export function InvestorCard({ investor, onDistribute, distributing }: Props) {
+export function InvestorCard({ investor, bondPaused, hbarUsdCents, onDistribute, distributing }: Props) {
   const ens = ensStatus(investor);
   const hedera = hederaStatus(investor);
   const stale = isStale(investor);
+  const reason = blockReason(investor, bondPaused);
   const buttonState = distributeButtonState(investor, distributing);
 
   return (
@@ -38,6 +42,15 @@ export function InvestorCard({ investor, onDistribute, distributing }: Props) {
         </div>
         <StatusBadge status={ens} />
       </div>
+
+      {reason && (
+        <div
+          className="rounded-lg px-3 py-2 mb-3 text-[12px] leading-snug"
+          style={{ background: "var(--bg-danger)", color: "var(--text-danger)" }}
+        >
+          <span className="font-medium">Blocked:</span> {reason}.
+        </div>
+      )}
 
       <div
         className="border-t-[0.5px] pt-2.5 flex flex-col gap-1.5 mb-3"
@@ -73,11 +86,20 @@ export function InvestorCard({ investor, onDistribute, distributing }: Props) {
         </div>
       </div>
 
-      <p className="text-[12px] m-0 mb-3 grow" style={{ color: "var(--text-secondary)" }}>
-        {investor.description}
-      </p>
+      {reason ? (
+        <div className="grow" />
+      ) : (
+        <p className="text-[12px] m-0 mb-3 grow" style={{ color: "var(--text-secondary)" }}>
+          {investor.description}
+        </p>
+      )}
 
-      <DistributeButton state={buttonState} investor={investor} onDistribute={onDistribute} />
+      <DistributeButton
+        state={buttonState}
+        investor={investor}
+        hbarUsdCents={hbarUsdCents}
+        onDistribute={onDistribute}
+      />
     </div>
   );
 }
@@ -101,18 +123,24 @@ function StatusBadge({ status }: { status: "authorized" | "blocked" }) {
 function DistributeButton({
   state,
   investor,
+  hbarUsdCents,
   onDistribute,
 }: {
   state: DistributeButtonState;
   investor: InvestorView;
+  hbarUsdCents: bigint;
   onDistribute: (investor: InvestorView) => void;
 }) {
+  const usd = formatTinybarAsUsd(investor.couponAmountTinybar, hbarUsdCents);
+  const readyLabel =
+    `Distribute ${formatTinybarAsHbar(investor.couponAmountTinybar)} HBAR` +
+    (usd ? ` (≈ ${usd})` : "");
   const labels: Record<DistributeButtonState["kind"], string> = {
     "already-paid": "Coupon already paid",
     locked: "Locked — publish first",
     "nothing-owed": "Nothing owed yet",
     distributing: "Distributing...",
-    ready: `Distribute ${formatTinybarAsHbar(investor.couponAmountTinybar)} HBAR`,
+    ready: readyLabel,
   };
 
   return (

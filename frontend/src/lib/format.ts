@@ -24,6 +24,17 @@ export function formatTinybarAsHbar(tinybar: bigint): string {
   return (Number(tinybar) / 1e8).toFixed(4);
 }
 
+/**
+ * Tinybar valued in USD at a live HBAR/USD price (whole cents per HBAR, from
+ * the Chainlink feed). Returns `null` when there's no price or nothing to
+ * value, so callers can just skip the "≈ $x" suffix rather than render "$0.00".
+ */
+export function formatTinybarAsUsd(tinybar: bigint, hbarUsdCents: bigint): string | null {
+  if (tinybar <= 0n || hbarUsdCents <= 0n) return null;
+  const usd = (Number(tinybar) / 1e8) * (Number(hbarUsdCents) / 100);
+  return `$${usd.toFixed(2)}`;
+}
+
 /** `nowSeconds` is a param, not `Date.now()`, so this stays pure and testable. */
 export function secondsUntil(target: bigint, nowSeconds: bigint): bigint {
   return target - nowSeconds;

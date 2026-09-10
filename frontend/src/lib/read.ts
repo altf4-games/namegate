@@ -1,6 +1,14 @@
 import { namehash } from "viem/ens";
 import { sepoliaClient, hederaClient } from "./chains";
-import { addresses, beaconAbi, mirrorAbi, bondAbi, distributorAbi } from "./contracts";
+import {
+  addresses,
+  beaconAbi,
+  mirrorAbi,
+  bondAbi,
+  distributorAbi,
+  pauseSwitchAbi,
+  priceReaderAbi,
+} from "./contracts";
 import { env } from "./env";
 import { describeRecord, type ComplianceRecord } from "../../../ens/src/beaconRecord.js";
 import { PARENT_NAME } from "../../../ens/src/constants.js";
@@ -45,6 +53,10 @@ export type BondTerms = {
   endDate: bigint;
   totalSupply: bigint;
   decimals: number;
+  /** True when the issuer's pause switch is on — every transfer and issuance is frozen bond-wide. */
+  paused: boolean;
+  /** Live HBAR/USD price in whole US cents, from the Chainlink feed via HbarUsdPriceReader. */
+  hbarUsdCents: bigint;
 };
 
 /**
@@ -135,7 +147,7 @@ export async function readInvestor(label: string, address: `0x${string}`): Promi
 }
 
 export async function readBondTerms(): Promise<BondTerms> {
-  const [coupon, totalSupply, decimals] = await Promise.all([
+  const [coupon, totalSupply, decimals, paused, price] = await Promise.all([
     hederaClient.readContract({
       address: addresses.bond,
       abi: bondAbi,
@@ -159,6 +171,16 @@ export async function readBondTerms(): Promise<BondTerms> {
       abi: bondAbi,
       functionName: "decimals",
     }) as Promise<number>,
+    hederaClient.readContract({
+      address: addresses.pauseSwitch,
+      abi: pauseSwitchAbi,
+      functionName: "isPaused",
+    }) as Promise<boolean>,
+    hederaClient.readContract({
+      address: addresses.priceReader,
+      abi: priceReaderAbi,
+      functionName: "latestHbarUsdCents",
+    }) as Promise<readonly [bigint, bigint]>,
   ]);
 
   return {
@@ -168,5 +190,7 @@ export async function readBondTerms(): Promise<BondTerms> {
     endDate: coupon.coupon.endDate,
     totalSupply,
     decimals,
+    paused,
+    hbarUsdCents: price[0],
   };
 }

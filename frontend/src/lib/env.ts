@@ -21,6 +21,7 @@ export const env = {
   bondAddress: requireEnv("VITE_BOND_ADDRESS") as `0x${string}`,
   distributorAddress: requireEnv("VITE_COUPON_DISTRIBUTOR_ADDRESS") as `0x${string}`,
   pauseSwitchAddress: requireEnv("VITE_PAUSE_SWITCH_ADDRESS") as `0x${string}`,
+  priceReaderAddress: requireEnv("VITE_PRICE_READER_ADDRESS") as `0x${string}`,
   couponId: BigInt(requireEnv("VITE_COUPON_ID")),
 
   investorALabel: requireEnv("VITE_INVESTOR_A_LABEL"),

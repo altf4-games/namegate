@@ -370,13 +370,20 @@ function StepRow({
         <StepBadge index={index} status={state.status} />
         <div className="min-w-0">
           <p className="text-[13px] m-0">{STEP_LABELS[stepKey]}</p>
-          {state.status === "done" && (
-            <p
-              className="text-[11px] m-0 truncate max-w-[220px]"
+          {state.status === "done" && state.detail && (
+            <a
+              href={
+                stepKey === "issue"
+                  ? `https://hashscan.io/testnet/tx/${state.detail}`
+                  : `https://sepolia.etherscan.io/tx/${state.detail}`
+              }
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] m-0 truncate max-w-[220px] block underline"
               style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}
             >
               {state.detail}
-            </p>
+            </a>
           )}
           {state.status === "error" && (
             <p className="text-[11px] m-0" style={{ color: "var(--text-danger)" }}>
