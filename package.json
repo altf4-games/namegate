@@ -68,6 +68,7 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "5.0.2",
     "@types/node": "^22.10.2",
+    "@vercel/node": "^12.0.3",
     "hardhat": "^2.29.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

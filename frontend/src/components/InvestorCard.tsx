@@ -56,7 +56,22 @@ export function InvestorCard({ investor, bondPaused, hbarUsdCents, onDistribute,
         className="border-t-[0.5px] pt-2.5 flex flex-col gap-1.5 mb-3"
         style={{ borderColor: "var(--border)" }}
       >
-        <Row label="KYC" value={investor.record.kyc || "(unset)"} />
+        <div className="flex justify-between items-center text-[13px]">
+          <span style={{ color: "var(--text-secondary)" }} className="flex items-center gap-1.5">
+            KYC
+            {investor.kycLocked && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                style={{ background: "var(--surface-1)", color: "var(--text-secondary)" }}
+                title="The issuer has locked its own write access to this field. Changing it now needs an explicit, auditable re-authorization."
+              >
+                <i className="ti ti-lock" style={{ fontSize: 11 }} aria-hidden="true" />
+                issuer-locked
+              </span>
+            )}
+          </span>
+          <span>{investor.record.kyc || "(unset)"}</span>
+        </div>
         <Row label="Jurisdiction" value={investor.record.jurisdiction || "(unset)"} />
         <Row label="Accreditation" value={investor.record.accreditationExpiry || "(unset)"} />
         <Row

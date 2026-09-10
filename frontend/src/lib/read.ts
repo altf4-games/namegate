@@ -11,7 +11,8 @@ import {
 } from "./contracts";
 import { env } from "./env";
 import { describeRecord, type ComplianceRecord } from "../../../ens/src/beaconRecord.js";
-import { PARENT_NAME } from "../../../ens/src/constants.js";
+import { PARENT_NAME, COMPLIANCE_KEYS } from "../../../ens/src/constants.js";
+import { permissionedResolverAbi } from "../../../ens/src/abi.js";
 
 export type { ComplianceRecord };
 
@@ -44,6 +45,13 @@ export type InvestorView = {
   lastAppliedAt: bigint;
   couponAmountTinybar: bigint;
   alreadyPaid: boolean;
+  /**
+   * True when the issuer has locked its own write access to this name's
+   * `compliance.kyc` field — the "not even me can quietly change a verified
+   * field" control. Detected by simulating the issuer's own setText and
+   * seeing it revert; there is no dedicated getter for a per-key text role.
+   */
+  kycLocked: boolean;
 };
 
 export type BondTerms = {
@@ -132,6 +140,22 @@ export async function readInvestor(label: string, address: `0x${string}`): Promi
   const previewTinybar =
     !recordDateReached || denominator === 0n ? 0n : (numerator * 1_000_000n) / denominator;
 
+  // Would the issuer's own key still be allowed to write compliance.kyc on
+  // this name? If the simulated call reverts, the field is locked. Isolated
+  // from the reads above so a resolver hiccup here can't blank the card.
+  let kycLocked = false;
+  try {
+    await sepoliaClient.simulateContract({
+      address: env.issuerResolverAddress,
+      abi: permissionedResolverAbi,
+      functionName: "setText",
+      args: [node, COMPLIANCE_KEYS.kyc, record.kyc || "verified"],
+      account: env.issuerAddress,
+    });
+  } catch {
+    kycLocked = true;
+  }
+
   return {
     label,
     address,
@@ -143,6 +167,7 @@ export async function readInvestor(label: string, address: `0x${string}`): Promi
     lastAppliedAt,
     couponAmountTinybar: previewTinybar,
     alreadyPaid,
+    kycLocked,
   };
 }
 

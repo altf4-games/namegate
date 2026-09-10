@@ -4,6 +4,7 @@ import { NavBarConnected, NavBarUnconfigured } from "./components/NavBar";
 import { BondTerms } from "./components/BondTerms";
 import { InvestorCard } from "./components/InvestorCard";
 import { OnboardInvestor } from "./components/OnboardInvestor";
+import { ScheduledCoupon } from "./components/ScheduledCoupon";
 import { ContractsPanel } from "./components/ContractsPanel";
 import { readInvestor, readBondTerms, type InvestorView, type BondTerms as BondTermsData } from "./lib/read";
 import { publishCompliance, distributeCoupon, type MinimalEip1193Provider } from "./lib/actions";
@@ -194,6 +195,8 @@ function Dashboard({ wallet }: { wallet: WalletAccess }) {
             onOnboarded={handleOnboarded}
             onIssued={refresh}
           />
+
+          {wallet.connected && <ScheduledCoupon investors={state.investors} />}
 
           <ContractsPanel />
 

@@ -37,6 +37,7 @@ function makeInvestor(overrides: Partial<InvestorView> = {}): InvestorView {
     lastAppliedAt: 1788675693n,
     couponAmountTinybar: 41_095_890n,
     alreadyPaid: false,
+    kycLocked: false,
     ...overrides,
   };
 }
