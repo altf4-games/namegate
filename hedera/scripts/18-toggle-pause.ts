@@ -37,6 +37,12 @@ async function main() {
     functionName: "setPaused",
     args: [paused],
     account: issuerAccount,
+    // Hashio's relay has been seen returning a too-low gas estimate for this
+    // one-SSTORE write, so the tx mines and then rolls back out of gas. A
+    // fixed floor well above the ~28k this actually costs sidesteps that —
+    // getting the bond stuck paused because an unpause silently reverted is
+    // the failure mode worth spending 70k of headroom to avoid.
+    gas: 100_000n,
   });
   const hash = await walletClient.writeContract(request);
   const receipt = await confirmTransaction(publicClient, hash, "Toggling the pause switch");

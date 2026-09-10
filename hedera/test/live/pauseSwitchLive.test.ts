@@ -64,6 +64,11 @@ describe("Issuer pause switch (live)", () => {
       functionName: "setPaused",
       args: [paused],
       account: issuerAccount,
+      // Fixed floor: Hashio has been seen under-estimating gas for this
+      // one-SSTORE write, mining it, then rolling it back out of gas. If
+      // that hits the unpause in the `after` hook, the bond is left paused
+      // for every other test and the live app. 100k is ~3.5x the real cost.
+      gas: 100_000n,
     });
     const hash = await walletClient.writeContract(request);
     await confirmTransaction(publicClient, hash, `Setting paused=${paused}`);
