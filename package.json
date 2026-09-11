@@ -33,6 +33,7 @@
     "hedera:submit-attestation": "node --env-file=.env --import tsx hedera/scripts/08-submit-attestation.ts",
     "hedera:issue": "node --env-file=.env --import tsx hedera/scripts/09-issue-tokens.ts",
     "hedera:set-coupon": "node --env-file=.env --import tsx hedera/scripts/10-set-coupon.ts",
+    "hedera:batch-set-coupons": "node --env-file=.env --import tsx hedera/scripts/22-batch-set-coupons.ts",
     "hedera:check-coupon": "node --env-file=.env --import tsx hedera/scripts/11-check-coupon.ts",
     "hedera:deploy-distributor": "node --env-file=.env --import tsx hedera/scripts/12-deploy-coupon-distributor.ts",
     "hedera:fund-distributor": "node --env-file=.env --import tsx hedera/scripts/13-fund-distributor.ts",
